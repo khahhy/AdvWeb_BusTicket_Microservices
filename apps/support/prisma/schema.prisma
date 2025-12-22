@@ -1,0 +1,51 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../../node_modules/@prisma/client-support"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Notifications {
+  id        String             @id @default(uuid())
+  userId    String             
+  bookingId String?            
+  type      NotificationType
+  template  String?
+  content   String?
+  status    NotificationStatus @default(pending)
+  sentAt    DateTime?
+  createdAt DateTime           @default(now())
+
+  @@index([userId])
+  @@index([bookingId])
+}
+
+model ActivityLog {
+  id         String   @id @default(uuid())
+  userId     String?  
+  action     String
+  entityId   String?
+  entityType String?
+  metadata   Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([entityId, entityType])
+  @@index([createdAt])
+}
+
+enum NotificationType {
+  email
+  sms
+}
+
+enum NotificationStatus {
+  pending
+  sent
+  failed
+}

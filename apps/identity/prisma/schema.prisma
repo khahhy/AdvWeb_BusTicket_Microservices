@@ -1,0 +1,46 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../../node_modules/@prisma/client-identity"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Users {
+  id                      String          @id @default(uuid())
+  fullName                String?
+  email                   String          @unique
+  phoneNumber             String?         @unique
+  password                String?
+  authProvider            AuthProvider    @default(local)
+  providerId              String?
+  role                    UserRole        @default(passenger)
+  status                  UserStatus      @default(unverified)
+  createdAt               DateTime        @default(now())
+  updatedAt               DateTime        @updatedAt
+  emailVerified           Boolean         @default(false)
+  verificationToken       String?         @unique
+  tokenExpiresAt          DateTime?
+  resetToken              String?         @unique
+  resetTokenExpiresAt     DateTime?
+  notificationPreferences Json?           @default("{\"email\":{\"booking\":true,\"payment\":true,\"reminder\":true,\"promotion\":true},\"sms\":{\"booking\":true,\"payment\":false,\"reminder\":true,\"promotion\":false}}")
+}
+
+enum UserRole {
+  passenger
+  admin
+}
+
+enum UserStatus {
+  active
+  banned
+  unverified
+}
+
+enum AuthProvider {
+  local
+  google
+  firebase
+}

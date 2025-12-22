@@ -1,0 +1,42 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../../node_modules/@prisma/client-payment"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Payments {
+  id                   String        @id @default(uuid())
+  bookingId            String        
+  amount               Decimal
+  gateway              GatewayType?
+  gatewayTransactionId String?
+  status               PaymentStatus
+  metadata             Json?
+  orderCode            BigInt?       @unique
+  refundedAmount       Decimal?
+  refundedAt           DateTime?
+  refundReason         String?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  @@index([bookingId])
+  @@index([orderCode])
+}
+
+enum PaymentStatus {
+  pending
+  successful
+  failed
+  refunded
+}
+
+enum GatewayType {
+  momo
+  zalopay
+  payos
+  paypal_sandbox
+}

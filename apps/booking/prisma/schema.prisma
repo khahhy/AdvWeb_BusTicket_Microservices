@@ -1,0 +1,66 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../../node_modules/@prisma/client-booking"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Bookings {
+  id            String        @id @default(uuid())
+  userId        String?
+  tripId        String
+  routeId       String
+  seatId        String
+  pickupStopId  String
+  dropoffStopId String
+  
+  customerInfo  Json
+  price         Decimal
+  status        BookingStatus
+  ticketCode    String?       @unique
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  
+  reviews       Reviews[]
+  seatLocks     SeatSegmentLocks[]
+
+  @@index([userId])
+  @@index([tripId])
+  @@index([routeId])
+  @@index([seatId])
+  @@index([ticketCode])
+}
+
+model SeatSegmentLocks {
+  tripId    String
+  seatId    String
+  segmentId String
+  
+  bookingId String
+  booking   Bookings @relation(fields: [bookingId], references: [id])
+
+  @@id([tripId, seatId, segmentId])
+  @@index([tripId])
+  @@index([seatId])
+}
+
+model Reviews {
+  id        String   @id @default(uuid())
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+  
+  userId    String 
+  
+  bookingId String
+  booking   Bookings @relation(fields: [bookingId], references: [id])
+}
+
+enum BookingStatus {
+  pendingPayment
+  confirmed
+  cancelled
+}

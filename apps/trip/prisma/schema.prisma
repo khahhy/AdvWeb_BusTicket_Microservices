@@ -1,0 +1,159 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../../node_modules/@prisma/client-trip"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model SystemSettings {
+  key         SettingKey @id
+  value       Json
+  description String?
+  updatedAt   DateTime   @updatedAt
+  createdAt   DateTime   @default(now())
+}
+
+model Locations {
+  id        String      @id @default(uuid())
+  name      String
+  address   String?
+  city      String
+  latitude  Float?
+  longitude Float?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  
+  routesDestination Routes[]    @relation("RoutesDestination")
+  routesOrigin      Routes[]    @relation("RoutesOrigin")
+  tripStops         TripStops[]
+}
+
+model Buses {
+  id          String   @id @default(uuid())
+  plate       String   @unique
+  amenities   Json?
+  busType     BusType  @default(standard)
+  priceFactor Float    @default(1.0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  seats       Seats[]
+  trips       Trips[]
+}
+
+model Seats {
+  id         String @id @default(uuid())
+  busId      String
+  seatNumber String
+  bus        Buses  @relation(fields: [busId], references: [id])
+
+  @@unique([busId, seatNumber])
+  @@index([busId])
+}
+
+model Trips {
+  id         String         @id @default(uuid())
+  busId      String
+  tripName   String?
+  startTime  DateTime
+  endTime    DateTime
+  status     TripStatus     @default(scheduled)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  
+  bus        Buses          @relation(fields: [busId], references: [id])
+  tripRoutes TripRouteMap[]
+  segments   TripSegments[]
+  tripStops  TripStops[]
+
+  @@index([busId, startTime])
+  @@index([startTime])
+  @@index([status])
+}
+
+model TripStops {
+  id            String         @id @default(uuid())
+  tripId        String
+  locationId    String
+  sequence      Int
+  arrivalTime   DateTime?
+  departureTime DateTime?
+  
+  location      Locations      @relation(fields: [locationId], references: [id])
+  trip          Trips          @relation(fields: [tripId], references: [id])
+  segmentFrom   TripSegments[] @relation("SegmentFrom")
+  segmentTo     TripSegments[] @relation("SegmentTo")
+
+  @@unique([tripId, sequence])
+  @@index([tripId])
+}
+
+model TripSegments {
+  id              String             @id @default(uuid())
+  tripId          String
+  fromStopId      String
+  toStopId        String
+  segmentIndex    Int
+  durationMinutes Int?
+  
+  fromStop        TripStops          @relation("SegmentFrom", fields: [fromStopId], references: [id])
+  toStop          TripStops          @relation("SegmentTo", fields: [toStopId], references: [id])
+  trip            Trips              @relation(fields: [tripId], references: [id])
+
+  @@unique([tripId, segmentIndex])
+  @@index([tripId])
+}
+
+model Routes {
+  id                    String         @id @default(uuid())
+  originLocationId      String
+  destinationLocationId String
+  name                  String
+  description           String?
+  isActive              Boolean        @default(false)
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  
+  destination           Locations      @relation("RoutesDestination", fields: [destinationLocationId], references: [id])
+  origin                Locations      @relation("RoutesOrigin", fields: [originLocationId], references: [id])
+  tripRoutes            TripRouteMap[]
+}
+
+model TripRouteMap {
+  tripId  String
+  routeId String
+  price   Decimal
+  
+  route   Routes  @relation(fields: [routeId], references: [id])
+  trip    Trips   @relation(fields: [tripId], references: [id])
+
+  @@id([tripId, routeId])
+  @@index([routeId])
+  @@index([tripId])
+}
+
+enum SettingKey {
+  GENERAL
+  BOOKING_RULES
+  BUS_AMENITIES
+  PAYMENT_GATEWAYS
+  BUS_TYPE_PRICING
+  PRICING_POLICIES
+}
+
+enum TripStatus {
+  scheduled
+  ongoing
+  completed
+  cancelled
+}
+
+enum BusType {
+  standard
+  vip
+  sleeper
+  limousine
+}
