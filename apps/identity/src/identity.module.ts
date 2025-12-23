@@ -1,11 +1,20 @@
 import { Module } from '@nestjs/common';
-import { IdentityController } from './identity.controller';
-import { IdentityService } from './identity.service';
-import { UsersModule } from './users/users.module';
+import { ConfigModule } from '@nestjs/config';
+import { AuthModule } from './auth/auth.module';
+import { UserModule } from './user/user.module';
+import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
-  imports: [UsersModule],
-  controllers: [IdentityController],
-  providers: [IdentityService],
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: ['.env', 'apps/identity/.env'],
+    }),
+    PrismaModule,
+    AuthModule,
+    UserModule,
+  ],
+  controllers: [],
+  providers: [],
 })
 export class IdentityModule {}
