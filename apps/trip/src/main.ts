@@ -1,8 +1,20 @@
 import { NestFactory } from '@nestjs/core';
+import { Transport, MicroserviceOptions } from '@nestjs/microservices';
 import { TripModule } from './trip.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(TripModule);
-  await app.listen(process.env.port ?? 3000);
+  const app = await NestFactory.createMicroservice<MicroserviceOptions>(
+    TripModule,
+    {
+      transport: Transport.TCP,
+      options: {
+        host: '0.0.0.0',
+        port: 3003,
+      },
+    },
+  );
+
+  await app.listen();
+  console.log('Trip Microservice is listening on port 3003');
 }
-bootstrap();
+void bootstrap();

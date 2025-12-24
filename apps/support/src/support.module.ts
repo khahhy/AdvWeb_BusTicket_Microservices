@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { SupportController } from './support.controller';
-import { SupportService } from './support.service';
 import { EmailModule } from './email/email.module';
+import { ActivityLogsModule } from './activity-logs/activity-logs.module';
+import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
   imports: [
@@ -10,9 +10,11 @@ import { EmailModule } from './email/email.module';
       isGlobal: true,
       envFilePath: '.env',
     }),
+    PrismaModule,
     EmailModule,
+    ActivityLogsModule,
   ],
-  controllers: [SupportController],
-  providers: [SupportService],
+  controllers: [],
+  providers: [],
 })
 export class SupportModule {}

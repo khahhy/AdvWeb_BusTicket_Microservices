@@ -2,11 +2,11 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PassportModule } from '@nestjs/passport';
+import { JwtStrategy } from './strategies/jwt.strategy';
 
 @Module({
   imports: [
-    PassportModule,
-
+    PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -19,6 +19,9 @@ import { PassportModule } from '@nestjs/passport';
       }),
     }),
   ],
-  exports: [JwtModule, PassportModule],
+
+  providers: [JwtStrategy],
+
+  exports: [JwtModule, PassportModule, JwtStrategy],
 })
 export class SharedAuthModule {}

@@ -1,12 +1,13 @@
 import {
+  Inject,
   Injectable,
   NotFoundException,
   BadRequestException,
   InternalServerErrorException,
 } from '@nestjs/common';
+import { ClientProxy } from '@nestjs/microservices';
 import { Prisma } from '@prisma/client-identity';
 import { PrismaService } from '../prisma/prisma.service';
-// import { ActivityLogsService } from 'src/activity-logs/activity-logs.service';
 import { RedisCacheService } from '@app/shared';
 import { hash } from 'bcrypt';
 import type {
@@ -32,7 +33,7 @@ export interface UserStatsData {
 export class UserService {
   constructor(
     private readonly prisma: PrismaService,
-    // private readonly activityLogService: ActivityLogsService,
+    @Inject('SUPPORT_SERVICE') private readonly supportClient: ClientProxy,
     private readonly cacheManager: RedisCacheService,
   ) {}
 
@@ -90,6 +91,7 @@ export class UserService {
         },
       };
     } catch (err) {
+      console.error('Error in UserService.findAll:', err);
       throw new InternalServerErrorException('Failed to fetch users', {
         cause: err,
       });
@@ -102,6 +104,7 @@ export class UserService {
       if (!user) throw new NotFoundException('User not found');
       return { message: 'Fetched user successfully', data: user };
     } catch (err) {
+      console.error('Error in UserService.findOne:', err);
       if (err instanceof NotFoundException) throw err;
       throw new InternalServerErrorException('Failed to fetch user');
     }
@@ -146,21 +149,22 @@ export class UserService {
         },
       });
 
-      // await this.activityLogService.logAction({
-      //   userId: userId,
-      //   action: 'CREATE_ADMIN',
-      //   entityType: 'Users',
-      //   entityId: newUser.id,
-      //   metadata: {
-      //     userId: newUser.id,
-      //     email: newUser.email,
-      //   },
-      //   ipAddress: ip,
-      //   userAgent: userAgent,
-      // });
+      this.supportClient.emit('log_activity', {
+        userId: userId,
+        action: 'CREATE_ADMIN',
+        entityType: 'Users',
+        entityId: newUser.id,
+        metadata: {
+          userId: newUser.id,
+          email: newUser.email,
+        },
+        ipAddress: ip,
+        userAgent: userAgent,
+      });
 
       return { message: 'Admin created successfully', data: newUser };
     } catch (err) {
+      console.error('Error in UserService.createAdmin:', err);
       if (err instanceof BadRequestException) throw err;
       throw new InternalServerErrorException('Failed to create admin');
     }
@@ -203,6 +207,7 @@ export class UserService {
 
       return { message: 'User updated successfully', data: updatedUser };
     } catch (err) {
+      console.error('Error in UserService.findAll:', err);
       if (
         err instanceof NotFoundException ||
         err instanceof BadRequestException
@@ -228,21 +233,22 @@ export class UserService {
         data: { role: dto.role },
       });
 
-      // await this.activityLogService.logAction({
-      //   userId: userId,
-      //   action: 'UPDATE_ROLE_USER',
-      //   entityType: 'Users',
-      //   entityId: updatedUser.id,
-      //   metadata: {
-      //     userId: updatedUser.id,
-      //     email: updatedUser.email,
-      //   },
-      //   ipAddress: ip,
-      //   userAgent: userAgent,
-      // });
+      this.supportClient.emit('log_activity', {
+        userId: userId,
+        action: 'UPDATE_ROLE_USER',
+        entityType: 'Users',
+        entityId: updatedUser.id,
+        metadata: {
+          userId: updatedUser.id,
+          email: updatedUser.email,
+        },
+        ipAddress: ip,
+        userAgent: userAgent,
+      });
 
       return { message: 'User role updated successfully', data: updatedUser };
     } catch (err) {
+      console.error('Error in UserService.findAll:', err);
       if (err instanceof NotFoundException) throw err;
       throw new InternalServerErrorException('Failed to update role');
     }
@@ -264,21 +270,22 @@ export class UserService {
         data: { status: dto.status },
       });
 
-      // await this.activityLogService.logAction({
-      //   userId: userId,
-      //   action: 'UPDARE_STATUS_USER',
-      //   entityType: 'Users',
-      //   entityId: updatedUser.id,
-      //   metadata: {
-      //     userId: updatedUser.id,
-      //     status: updatedUser.status,
-      //   },
-      //   ipAddress: ip,
-      //   userAgent: userAgent,
-      // });
+      this.supportClient.emit('log_activity', {
+        userId: userId,
+        action: 'UPDATE_STATUS_USER',
+        entityType: 'Users',
+        entityId: updatedUser.id,
+        metadata: {
+          userId: updatedUser.id,
+          status: updatedUser.status,
+        },
+        ipAddress: ip,
+        userAgent: userAgent,
+      });
 
       return { message: 'User status updated successfully', data: updatedUser };
     } catch (err) {
+      console.error('Error in UserService.findAll:', err);
       if (err instanceof NotFoundException) throw err;
       throw new InternalServerErrorException('Failed to update status');
     }
@@ -291,20 +298,21 @@ export class UserService {
 
       const deletedUser = await this.prisma.users.delete({ where: { id } });
 
-      // await this.activityLogService.logAction({
-      //   userId: userId,
-      //   action: 'DELETE_USER',
-      //   entityType: 'Users',
-      //   entityId: deletedUser.id,
-      //   metadata: {
-      //     userId: deletedUser.id,
-      //   },
-      //   ipAddress: ip,
-      //   userAgent: userAgent,
-      // });
+      this.supportClient.emit('log_activity', {
+        userId: userId,
+        action: 'DELETE_USER',
+        entityType: 'Users',
+        entityId: deletedUser.id,
+        metadata: {
+          userId: deletedUser.id,
+        },
+        ipAddress: ip,
+        userAgent: userAgent,
+      });
 
       return { message: 'User deleted successfully', data: deletedUser };
     } catch (err) {
+      console.error('Error in UserService.findAll:', err);
       if (err instanceof NotFoundException) throw err;
       throw new InternalServerErrorException('Failed to delete user');
     }
@@ -420,6 +428,7 @@ export class UserService {
         data: resultData,
       };
     } catch (err) {
+      console.error('Error in UserService.findAll:', err);
       throw new InternalServerErrorException('Failed to fetch user stats', {
         cause: err,
       });

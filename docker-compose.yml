@@ -10,5 +10,19 @@ services:
       - redis_data:/data
     command: ['redis-server', '--appendonly', 'yes']
 
+  postgres:
+    image: postgres:15-alpine
+    container_name: bus-ticket-postgres
+    ports:
+      - '6432:5432'
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123456
+      POSTGRES_DB: identity_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+
 volumes:
   redis_data:
+  postgres_data:

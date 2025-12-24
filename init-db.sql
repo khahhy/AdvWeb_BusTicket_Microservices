@@ -1,0 +1,4 @@
+CREATE DATABASE booking_db;
+CREATE DATABASE support_db;
+CREATE DATABASE payment_db;
+CREATE DATABASE trip_db;
