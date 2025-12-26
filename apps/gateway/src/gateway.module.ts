@@ -6,6 +6,10 @@ import { UserModule } from './user/user.module';
 import { SharedAuthModule } from '@app/shared';
 import { ActivityLogsModule } from './activity-logs/activity-logs.module';
 import { BusesModule } from './buses/buses.module';
+import { LocationModule } from './locations/location.module';
+import { TripScheduleModule } from './trip-schedules/trip-schedule.module';
+import { RoutesModule } from './routes/routes.module';
+import { SettingModule } from './settings/setting.module';
 
 @Module({
   imports: [
@@ -45,6 +49,10 @@ import { BusesModule } from './buses/buses.module';
     UserModule,
     ActivityLogsModule,
     BusesModule,
+    LocationModule,
+    SettingModule,
+    TripScheduleModule,
+    RoutesModule,
   ],
   controllers: [],
   providers: [],

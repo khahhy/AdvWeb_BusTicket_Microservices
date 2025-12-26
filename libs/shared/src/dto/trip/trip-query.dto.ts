@@ -1,4 +1,4 @@
-import { TripStatus } from '@prisma/client-trip';
+import { TripStatus } from '@app/shared/enums';
 import {
   IsOptional,
   IsEnum,

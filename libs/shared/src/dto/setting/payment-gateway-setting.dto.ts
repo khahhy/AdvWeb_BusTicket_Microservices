@@ -8,7 +8,7 @@ import {
   IsEnum,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { GatewayType } from '@prisma/client-payment';
+import { GatewayType } from '@app/shared/enums';
 
 export class GatewayConfigDto {
   @ApiProperty({

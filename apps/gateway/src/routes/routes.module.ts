@@ -1,9 +1,10 @@
 import { Module } from '@nestjs/common';
 import { ClientsModule, Transport } from '@nestjs/microservices';
-import { LocationsService } from './location.service';
-import { LocationsController } from './location.controller';
-import { PrismaModule } from '../prisma/prisma.module';
 import { RedisCacheModule } from '@app/shared';
+import { RoutesService } from './routes.service';
+import { SettingModule } from '../setting/setting.module';
+import { PrismaModule } from '../prisma/prisma.module';
+import { RoutesController } from './routes.controller';
 
 @Module({
   imports: [
@@ -19,8 +20,9 @@ import { RedisCacheModule } from '@app/shared';
         },
       },
     ]),
+    SettingModule,
   ],
-  controllers: [LocationsController],
-  providers: [LocationsService],
+  controllers: [RoutesController],
+  providers: [RoutesService],
 })
-export class LocationModule {}
+export class RoutesModule {}

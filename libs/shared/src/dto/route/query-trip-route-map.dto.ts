@@ -10,12 +10,7 @@ import {
   IsDateString,
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
-import { BusType } from '@prisma/client-trip';
-
-export enum SortOrder {
-  ASC = 'asc',
-  DESC = 'desc',
-}
+import { BusType, SortOrder } from '@app/shared/enums';
 
 export class QueryTripRouteMapDto {
   @ApiPropertyOptional({ description: 'Page number', default: 1 })

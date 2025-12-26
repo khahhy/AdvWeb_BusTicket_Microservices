@@ -1,4 +1,4 @@
-import { UserRole } from '@app/shared/enums/user-role.enum';
+import { UserRole } from '@app/shared/enums';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEnum, IsInt, IsOptional, IsString, Min } from 'class-validator';
 import { Type } from 'class-transformer';

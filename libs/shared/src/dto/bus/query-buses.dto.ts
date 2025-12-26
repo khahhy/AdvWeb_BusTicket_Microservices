@@ -1,7 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsOptional, IsEnum, IsArray, IsString } from 'class-validator';
 import { Type } from 'class-transformer';
-import { BusType } from '@prisma/client-trip';
+import { BusType } from '@app/shared/enums';
 
 export class QueryBusesDto {
   @ApiPropertyOptional({

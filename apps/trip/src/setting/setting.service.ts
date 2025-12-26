@@ -1,18 +1,22 @@
 import {
+  Inject,
   Injectable,
   BadRequestException,
   InternalServerErrorException,
 } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
-import { SettingKey, Prisma } from '@prisma/client';
-import { ActivityLogsService } from 'src/activity-logs/activity-logs.service';
-import { RedisCacheService } from 'src/cache/redis-cache.service';
-import { BookingRulesSettingsDto } from './dto/booking-rule-setting.dto';
-import { BusAmenitiesSettingsDto } from './dto/bus-amenities-setting.dto';
-import { GeneralSettingsDto } from './dto/general-setting.dto';
-import { PaymentGatewaySettingsDto } from './dto/payment-gateway-setting.dto';
-import { BusTypePricingDto } from './dto/bus-type-pricing.dto';
-import { PricingPoliciesDto } from './dto/pricing-policies.dto';
+import { PrismaService } from '../prisma/prisma.service';
+import { Prisma } from '@prisma/client-trip';
+import { ClientProxy } from '@nestjs/microservices';
+import { RedisCacheService } from '@app/shared';
+import { SettingKey } from '@app/shared/enums';
+import {
+  BookingRulesSettingsDto,
+  BusAmenitiesSettingsDto,
+  GeneralSettingsDto,
+  PaymentGatewaySettingsDto,
+  BusTypePricingDto,
+  PricingPoliciesDto,
+} from '@app/shared/dto';
 
 export type SettingsValueDto =
   | GeneralSettingsDto
@@ -26,7 +30,7 @@ export type SettingsValueDto =
 export class SettingService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly activityLogService: ActivityLogsService,
+    @Inject('SUPPORT_SERVICE') private readonly supportClient: ClientProxy,
     private readonly cacheManager: RedisCacheService,
   ) {}
 
@@ -111,7 +115,7 @@ export class SettingService {
 
         await this.cacheManager.delByPattern('trip-route-map:search:*');
       }
-      await this.activityLogService.logAction({
+      this.supportClient.emit('log_activity', {
         userId: userId,
         action: 'UPSERT_SETTING',
         entityType: 'Settings',

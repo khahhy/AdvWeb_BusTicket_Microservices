@@ -6,7 +6,7 @@ import {
   UpdateUserDto,
   UpdateRoleDto,
   QueryUserDto,
-} from '@app/shared';
+} from '@app/shared/dto';
 
 @Controller()
 export class UserController {

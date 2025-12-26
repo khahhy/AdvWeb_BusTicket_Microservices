@@ -16,7 +16,7 @@ import type {
   UpdateRoleDto,
   UpdateStatusDto,
   QueryUserDto,
-} from '@app/shared';
+} from '@app/shared/dto';
 
 export interface StatItem {
   value: number;

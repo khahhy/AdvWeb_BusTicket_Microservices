@@ -6,7 +6,7 @@ import {
   SignInDto,
   ResetPasswordDto,
   UpdateProfileDto,
-} from '@app/shared';
+} from '@app/shared/dto';
 
 @Controller()
 export class AuthController {

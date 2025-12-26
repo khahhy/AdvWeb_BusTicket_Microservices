@@ -1,24 +1,28 @@
 import {
+  Inject,
   Injectable,
   NotFoundException,
   InternalServerErrorException,
   BadRequestException,
 } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
-import { ActivityLogsService } from 'src/activity-logs/activity-logs.service';
-import { RedisCacheService } from 'src/cache/redis-cache.service';
-import { CreateTripDto } from 'src/trips/dto/create-trip.dto';
-import { TripQueryDto } from 'src/trips/dto/trip-query.dto';
-import { SearchTripDto } from 'src/trips/dto/search-trip.dto';
-import { UpdateTripDto } from 'src/trips/dto/update-trip.dto';
-import { Prisma, TripStatus, Trips } from '@prisma/client';
-import { normalizeCity } from 'src/common/utils/normalizeCity';
+import { PrismaService } from '../prisma/prisma.service';
+import { ClientProxy } from '@nestjs/microservices';
+import { RedisCacheService } from '@app/shared';
+import {
+  CreateTripDto,
+  TripQueryDto,
+  SearchTripDto,
+  // UpdateTripDto,
+} from '@app/shared/dto';
+import { Prisma, Trips } from '@prisma/client-trip';
+import { TripStatus } from '@app/shared/enums';
+import { normalizeCity } from '@app/shared';
 
 @Injectable()
-export class TripsService {
+export class TripScheduleService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly activityLogService: ActivityLogsService,
+    @Inject('SUPPORT_SERVICE') private readonly supportClient: ClientProxy,
     private readonly cacheManager: RedisCacheService,
   ) {}
 
@@ -164,7 +168,7 @@ export class TripsService {
 
       await prisma.tripSegments.createMany({ data: segments });
 
-      await this.activityLogService.logAction({
+      this.supportClient.emit('log_activity', {
         userId: userId,
         action: 'CREATE_TRIP',
         entityId: trip.id,
@@ -344,188 +348,188 @@ export class TripsService {
     return trip;
   }
 
-  async update(
-    tripId: string,
-    dto: UpdateTripDto,
-    userId: string,
-    ip: string,
-    userAgent: string,
-  ) {
-    const trip = await this.prisma.trips.findUnique({
-      where: { id: tripId },
-      include: { bookings: true, tripStops: true, segments: true },
-    });
+  // async update(
+  //   tripId: string,
+  //   dto: UpdateTripDto,
+  //   userId: string,
+  //   ip: string,
+  //   userAgent: string,
+  // ) {
+  //   const trip = await this.prisma.trips.findUnique({
+  //     where: { id: tripId },
+  //     include: { bookings: true, tripStops: true, segments: true },
+  //   });
 
-    if (!trip) throw new NotFoundException('Trip not found');
+  //   if (!trip) throw new NotFoundException('Trip not found');
 
-    if (trip.status !== 'scheduled') {
-      throw new BadRequestException('Cannot update trip that is not scheduled');
-    }
+  //   if (trip.status !== 'scheduled') {
+  //     throw new BadRequestException('Cannot update trip that is not scheduled');
+  //   }
 
-    if (trip.bookings.length > 0) {
-      throw new BadRequestException(
-        'Cannot update trip with existing bookings',
-      );
-    }
+  //   if (trip.bookings.length > 0) {
+  //     throw new BadRequestException(
+  //       'Cannot update trip with existing bookings',
+  //     );
+  //   }
 
-    const { busId, stops } = dto;
+  //   const { busId, stops } = dto;
 
-    // Validate new busId
-    if (busId && busId !== trip.busId) {
-      const bus = await this.prisma.buses.findUnique({ where: { id: busId } });
-      if (!bus) throw new BadRequestException('Invalid busId');
-    }
+  //   // Validate new busId
+  //   if (busId && busId !== trip.busId) {
+  //     const bus = await this.prisma.buses.findUnique({ where: { id: busId } });
+  //     if (!bus) throw new BadRequestException('Invalid busId');
+  //   }
 
-    let startTime: Date = trip.startTime;
-    let endTime: Date = trip.endTime;
-    let tripName = trip.tripName;
+  //   let startTime: Date = trip.startTime;
+  //   let endTime: Date = trip.endTime;
+  //   let tripName = trip.tripName;
 
-    if (stops) {
-      if (stops.length < 2) {
-        throw new BadRequestException('A trip must have at least 2 stops');
-      }
+  //   if (stops) {
+  //     if (stops.length < 2) {
+  //       throw new BadRequestException('A trip must have at least 2 stops');
+  //     }
 
-      for (let i = 0; i < stops.length; i++) {
-        const curr = stops[i];
-        const arrival = curr.arrivalTime
-          ? new Date(curr.arrivalTime).getTime()
-          : null;
-        const departure = curr.departureTime
-          ? new Date(curr.departureTime).getTime()
-          : null;
+  //     for (let i = 0; i < stops.length; i++) {
+  //       const curr = stops[i];
+  //       const arrival = curr.arrivalTime
+  //         ? new Date(curr.arrivalTime).getTime()
+  //         : null;
+  //       const departure = curr.departureTime
+  //         ? new Date(curr.departureTime).getTime()
+  //         : null;
 
-        if (arrival && departure && arrival > departure) {
-          throw new BadRequestException(
-            `Stop ${i + 1}: arrivalTime must be <= departureTime`,
-          );
-        }
+  //       if (arrival && departure && arrival > departure) {
+  //         throw new BadRequestException(
+  //           `Stop ${i + 1}: arrivalTime must be <= departureTime`,
+  //         );
+  //       }
 
-        if (i > 0) {
-          const prevDeparture = stops[i - 1].departureTime
-            ? new Date(stops[i - 1].departureTime).getTime()
-            : null;
+  //       if (i > 0) {
+  //         const prevDeparture = stops[i - 1].departureTime
+  //           ? new Date(stops[i - 1].departureTime).getTime()
+  //           : null;
 
-          if (arrival && prevDeparture && arrival < prevDeparture) {
-            throw new BadRequestException(
-              `Stop ${i + 1}: arrivalTime overlaps with previous stop`,
-            );
-          }
-        }
-      }
+  //         if (arrival && prevDeparture && arrival < prevDeparture) {
+  //           throw new BadRequestException(
+  //             `Stop ${i + 1}: arrivalTime overlaps with previous stop`,
+  //           );
+  //         }
+  //       }
+  //     }
 
-      const firstStop = stops[0];
-      const lastStop = stops[stops.length - 1];
+  //     const firstStop = stops[0];
+  //     const lastStop = stops[stops.length - 1];
 
-      const firstLocation = await this.prisma.locations.findUnique({
-        where: { id: stops[0].locationId },
-      });
-      const lastLocation = await this.prisma.locations.findUnique({
-        where: { id: stops[stops.length - 1].locationId },
-      });
+  //     const firstLocation = await this.prisma.locations.findUnique({
+  //       where: { id: stops[0].locationId },
+  //     });
+  //     const lastLocation = await this.prisma.locations.findUnique({
+  //       where: { id: stops[stops.length - 1].locationId },
+  //     });
 
-      if (!firstLocation || !lastLocation) {
-        throw new BadRequestException(
-          'Invalid locationId for first or last stop',
-        );
-      }
+  //     if (!firstLocation || !lastLocation) {
+  //       throw new BadRequestException(
+  //         'Invalid locationId for first or last stop',
+  //       );
+  //     }
 
-      tripName = `${firstLocation.city} - ${lastLocation.city}`;
-      startTime = new Date(firstStop.departureTime);
-      endTime = new Date(lastStop.arrivalTime);
-    }
+  //     tripName = `${firstLocation.city} - ${lastLocation.city}`;
+  //     startTime = new Date(firstStop.departureTime);
+  //     endTime = new Date(lastStop.arrivalTime);
+  //   }
 
-    const overlappingTrip = await this.prisma.trips.findFirst({
-      where: {
-        busId,
-        id: { not: tripId },
-        OR: [
-          {
-            startTime: { lte: endTime },
-            endTime: { gte: startTime },
-          },
-        ],
-        status: { not: 'cancelled' },
-      },
-    });
+  //   const overlappingTrip = await this.prisma.trips.findFirst({
+  //     where: {
+  //       busId,
+  //       id: { not: tripId },
+  //       OR: [
+  //         {
+  //           startTime: { lte: endTime },
+  //           endTime: { gte: startTime },
+  //         },
+  //       ],
+  //       status: { not: 'cancelled' },
+  //     },
+  //   });
 
-    if (overlappingTrip) {
-      throw new BadRequestException(
-        'Bus has another trip overlapping with this time',
-      );
-    }
+  //   if (overlappingTrip) {
+  //     throw new BadRequestException(
+  //       'Bus has another trip overlapping with this time',
+  //     );
+  //   }
 
-    return this.prisma.$transaction(async (prisma) => {
-      await prisma.trips.update({
-        where: { id: tripId },
-        data: { busId: busId ?? trip.busId, tripName, startTime, endTime },
-      });
+  //   return this.prisma.$transaction(async (prisma) => {
+  //     await prisma.trips.update({
+  //       where: { id: tripId },
+  //       data: { busId: busId ?? trip.busId, tripName, startTime, endTime },
+  //     });
 
-      if (stops) {
-        await prisma.tripSegments.deleteMany({ where: { tripId } });
-        await prisma.tripStops.deleteMany({ where: { tripId } });
+  //     if (stops) {
+  //       await prisma.tripSegments.deleteMany({ where: { tripId } });
+  //       await prisma.tripStops.deleteMany({ where: { tripId } });
 
-        await prisma.tripStops.createMany({
-          data: stops.map((s, idx) => ({
-            tripId,
-            locationId: s.locationId,
-            sequence: idx + 1,
-            arrivalTime: idx === 0 ? null : s.arrivalTime,
-            departureTime: idx === stops.length - 1 ? null : s.departureTime,
-          })),
-        });
+  //       await prisma.tripStops.createMany({
+  //         data: stops.map((s, idx) => ({
+  //           tripId,
+  //           locationId: s.locationId,
+  //           sequence: idx + 1,
+  //           arrivalTime: idx === 0 ? null : s.arrivalTime,
+  //           departureTime: idx === stops.length - 1 ? null : s.departureTime,
+  //         })),
+  //       });
 
-        const createdStops = await prisma.tripStops.findMany({
-          where: { tripId },
-          orderBy: { sequence: 'asc' },
-        });
+  //       const createdStops = await prisma.tripStops.findMany({
+  //         where: { tripId },
+  //         orderBy: { sequence: 'asc' },
+  //       });
 
-        const segments = createdStops.slice(0, -1).map((fromStop, idx) => {
-          const toStop = createdStops[idx + 1];
-          const durationMinutes =
-            fromStop.departureTime && toStop.arrivalTime
-              ? Math.round(
-                  (new Date(toStop.arrivalTime).getTime() -
-                    new Date(fromStop.departureTime).getTime()) /
-                    60000,
-                )
-              : null;
-          return {
-            tripId,
-            fromStopId: fromStop.id,
-            toStopId: toStop.id,
-            segmentIndex: idx + 1,
-            durationMinutes,
-          };
-        });
+  //       const segments = createdStops.slice(0, -1).map((fromStop, idx) => {
+  //         const toStop = createdStops[idx + 1];
+  //         const durationMinutes =
+  //           fromStop.departureTime && toStop.arrivalTime
+  //             ? Math.round(
+  //                 (new Date(toStop.arrivalTime).getTime() -
+  //                   new Date(fromStop.departureTime).getTime()) /
+  //                   60000,
+  //               )
+  //             : null;
+  //         return {
+  //           tripId,
+  //           fromStopId: fromStop.id,
+  //           toStopId: toStop.id,
+  //           segmentIndex: idx + 1,
+  //           durationMinutes,
+  //         };
+  //       });
 
-        await prisma.tripSegments.createMany({ data: segments });
-      }
-      await this.clearTripCache(tripId);
-      await this.activityLogService.logAction({
-        userId: userId,
-        action: 'UPDATE_TRIP',
-        entityType: 'Trips',
-        entityId: trip.id,
-        metadata: {
-          tripId: trip.id,
-        },
-        ipAddress: ip,
-        userAgent: userAgent,
-      });
+  //       await prisma.tripSegments.createMany({ data: segments });
+  //     }
+  //     await this.clearTripCache(tripId);
+  //     this.supportClient.emit('log_activity', {
+  //       userId: userId,
+  //       action: 'UPDATE_TRIP',
+  //       entityType: 'Trips',
+  //       entityId: trip.id,
+  //       metadata: {
+  //         tripId: trip.id,
+  //       },
+  //       ipAddress: ip,
+  //       userAgent: userAgent,
+  //     });
 
-      return prisma.trips.findUnique({
-        where: { id: tripId },
-        include: {
-          bus: true,
-          tripStops: {
-            orderBy: { sequence: 'asc' },
-            include: { location: true },
-          },
-          segments: { orderBy: { segmentIndex: 'asc' } },
-        },
-      });
-    });
-  }
+  //     return prisma.trips.findUnique({
+  //       where: { id: tripId },
+  //       include: {
+  //         bus: true,
+  //         tripStops: {
+  //           orderBy: { sequence: 'asc' },
+  //           include: { location: true },
+  //         },
+  //         segments: { orderBy: { segmentIndex: 'asc' } },
+  //       },
+  //     });
+  //   });
+  // }
 
   async updateStatus(
     tripId: string,
@@ -537,7 +541,7 @@ export class TripsService {
     const trip = await this.prisma.trips.findUnique({ where: { id: tripId } });
     if (!trip) throw new NotFoundException('Trip not found');
 
-    if (trip.status === status) {
+    if (trip.status === String(status)) {
       throw new BadRequestException(`Trip is already ${status}`);
     }
 
@@ -547,7 +551,7 @@ export class TripsService {
     });
 
     await this.clearTripCache(tripId);
-    await this.activityLogService.logAction({
+    this.supportClient.emit('log_activity', {
       userId: userId,
       action: 'UPDATE_STATUS_TRIP',
       entityType: 'Trips',
@@ -562,185 +566,185 @@ export class TripsService {
     return updatedTrip;
   }
 
-  async remove(tripId: string, userId: string, ip: string, userAgent: string) {
-    const trip = await this.prisma.trips.findUnique({
-      where: { id: tripId },
-      include: { bookings: true },
-    });
+  // async remove(tripId: string, userId: string, ip: string, userAgent: string) {
+  //   const trip = await this.prisma.trips.findUnique({
+  //     where: { id: tripId },
+  //     include: { bookings: true },
+  //   });
 
-    if (!trip) {
-      throw new NotFoundException('Trip not found');
-    }
+  //   if (!trip) {
+  //     throw new NotFoundException('Trip not found');
+  //   }
 
-    if (trip.bookings.length > 0) {
-      throw new BadRequestException(
-        'Cannot delete trip with existing bookings',
-      );
-    }
+  //   if (trip.bookings.length > 0) {
+  //     throw new BadRequestException(
+  //       'Cannot delete trip with existing bookings',
+  //     );
+  //   }
 
-    await this.activityLogService.logAction({
-      userId: userId,
-      action: 'DELETE_TRIP',
-      entityType: 'Trips',
-      entityId: trip.id,
-      metadata: {
-        tripId: trip.id,
-      },
-      ipAddress: ip,
-      userAgent: userAgent,
-    });
+  //   this.supportClient.emit('log_activity', {
+  //     userId: userId,
+  //     action: 'DELETE_TRIP',
+  //     entityType: 'Trips',
+  //     entityId: trip.id,
+  //     metadata: {
+  //       tripId: trip.id,
+  //     },
+  //     ipAddress: ip,
+  //     userAgent: userAgent,
+  //   });
 
-    await this.clearTripCache(tripId);
-    return this.prisma.$transaction(async (prisma) => {
-      await prisma.tripSegments.deleteMany({ where: { tripId } });
+  //   await this.clearTripCache(tripId);
+  //   return this.prisma.$transaction(async (prisma) => {
+  //     await prisma.tripSegments.deleteMany({ where: { tripId } });
 
-      await prisma.tripStops.deleteMany({ where: { tripId } });
+  //     await prisma.tripStops.deleteMany({ where: { tripId } });
 
-      return prisma.trips.delete({ where: { id: tripId } });
-    });
-  }
+  //     return prisma.trips.delete({ where: { id: tripId } });
+  //   });
+  // }
 
-  async getSeatsStatus(tripId: string, routeId: string) {
-    try {
-      const trip = await this.prisma.trips.findUnique({
-        where: { id: tripId },
-        include: {
-          bus: {
-            include: {
-              seats: {
-                orderBy: { seatNumber: 'asc' },
-              },
-            },
-          },
-        },
-      });
+  // async getSeatsStatus(tripId: string, routeId: string) {
+  //   try {
+  //     const trip = await this.prisma.trips.findUnique({
+  //       where: { id: tripId },
+  //       include: {
+  //         bus: {
+  //           include: {
+  //             seats: {
+  //               orderBy: { seatNumber: 'asc' },
+  //             },
+  //           },
+  //         },
+  //       },
+  //     });
 
-      if (!trip) throw new NotFoundException('Trip not found');
-      if (!trip.bus)
-        throw new NotFoundException('Bus assigned to trip not found');
+  //     if (!trip) throw new NotFoundException('Trip not found');
+  //     if (!trip.bus)
+  //       throw new NotFoundException('Bus assigned to trip not found');
 
-      const route = await this.prisma.routes.findUnique({
-        where: { id: routeId },
-        select: { originLocationId: true, destinationLocationId: true },
-      });
+  //     const route = await this.prisma.routes.findUnique({
+  //       where: { id: routeId },
+  //       select: { originLocationId: true, destinationLocationId: true },
+  //     });
 
-      if (!route) throw new NotFoundException('Route not found');
+  //     if (!route) throw new NotFoundException('Route not found');
 
-      const stops = await this.prisma.tripStops.findMany({
-        where: {
-          tripId,
-          locationId: {
-            in: [route.originLocationId, route.destinationLocationId],
-          },
-        },
-        select: { id: true, sequence: true, locationId: true },
-      });
+  //     const stops = await this.prisma.tripStops.findMany({
+  //       where: {
+  //         tripId,
+  //         locationId: {
+  //           in: [route.originLocationId, route.destinationLocationId],
+  //         },
+  //       },
+  //       select: { id: true, sequence: true, locationId: true },
+  //     });
 
-      const startStop = stops.find(
-        (s) => s.locationId === route.originLocationId,
-      );
-      const endStop = stops.find(
-        (s) => s.locationId === route.destinationLocationId,
-      );
+  //     const startStop = stops.find(
+  //       (s) => s.locationId === route.originLocationId,
+  //     );
+  //     const endStop = stops.find(
+  //       (s) => s.locationId === route.destinationLocationId,
+  //     );
 
-      if (!startStop || !endStop) {
-        throw new BadRequestException(
-          'This Trip does not cover the selected Route locations',
-        );
-      }
-      if (startStop.sequence >= endStop.sequence) {
-        throw new BadRequestException('Invalid route direction for this trip');
-      }
+  //     if (!startStop || !endStop) {
+  //       throw new BadRequestException(
+  //         'This Trip does not cover the selected Route locations',
+  //       );
+  //     }
+  //     if (startStop.sequence >= endStop.sequence) {
+  //       throw new BadRequestException('Invalid route direction for this trip');
+  //     }
 
-      const relevantSegments = await this.prisma.tripSegments.findMany({
-        where: {
-          tripId,
-          fromStop: { sequence: { gte: startStop.sequence } },
-          toStop: { sequence: { lte: endStop.sequence } },
-        },
-        select: { id: true },
-      });
+  //     const relevantSegments = await this.prisma.tripSegments.findMany({
+  //       where: {
+  //         tripId,
+  //         fromStop: { sequence: { gte: startStop.sequence } },
+  //         toStop: { sequence: { lte: endStop.sequence } },
+  //       },
+  //       select: { id: true },
+  //     });
 
-      const segmentIds = relevantSegments.map((s) => s.id);
+  //     const segmentIds = relevantSegments.map((s) => s.id);
 
-      // Collect booked seat IDs from multiple sources
-      const bookedSeatIds = new Set<string>();
+  //     // Collect booked seat IDs from multiple sources
+  //     const bookedSeatIds = new Set<string>();
 
-      const lockPattern = `lock:trip:${tripId}:*`;
-      const activeLocks = await this.cacheManager.keys(lockPattern);
+  //     const lockPattern = `lock:trip:${tripId}:*`;
+  //     const activeLocks = await this.cacheManager.keys(lockPattern);
 
-      if (activeLocks && activeLocks.length > 0) {
-        activeLocks.forEach((key) => {
-          const parts = key.split(':');
-          const segId = parts[4];
-          const seatId = parts[6];
-          if (segmentIds.includes(segId)) {
-            bookedSeatIds.add(seatId);
-          }
-        });
-      }
+  //     if (activeLocks && activeLocks.length > 0) {
+  //       activeLocks.forEach((key) => {
+  //         const parts = key.split(':');
+  //         const segId = parts[4];
+  //         const seatId = parts[6];
+  //         if (segmentIds.includes(segId)) {
+  //           bookedSeatIds.add(seatId);
+  //         }
+  //       });
+  //     }
 
-      // Method 1: Check SeatSegmentLocks (if segments exist)
-      if (segmentIds.length > 0) {
-        const lockedSeats = await this.prisma.seatSegmentLocks.findMany({
-          where: {
-            tripId,
-            segmentId: { in: segmentIds },
-          },
-          select: { seatId: true },
-        });
-        lockedSeats.forEach((lock) => bookedSeatIds.add(lock.seatId));
-      }
+  //     // Method 1: Check SeatSegmentLocks (if segments exist)
+  //     if (segmentIds.length > 0) {
+  //       const lockedSeats = await this.prisma.seatSegmentLocks.findMany({
+  //         where: {
+  //           tripId,
+  //           segmentId: { in: segmentIds },
+  //         },
+  //         select: { seatId: true },
+  //       });
+  //       lockedSeats.forEach((lock) => bookedSeatIds.add(lock.seatId));
+  //     }
 
-      // Method 2: Check Bookings table directly (fallback when no segments)
-      const bookedFromBookings = await this.prisma.bookings.findMany({
-        where: {
-          tripId,
-          routeId,
-          status: { in: ['confirmed', 'pendingPayment'] },
-        },
-        select: { seatId: true },
-      });
-      bookedFromBookings.forEach((b) => bookedSeatIds.add(b.seatId));
+  //     // Method 2: Check Bookings table directly (fallback when no segments)
+  //     const bookedFromBookings = await this.prisma.bookings.findMany({
+  //       where: {
+  //         tripId,
+  //         routeId,
+  //         status: { in: ['confirmed', 'pendingPayment'] },
+  //       },
+  //       select: { seatId: true },
+  //     });
+  //     bookedFromBookings.forEach((b) => bookedSeatIds.add(b.seatId));
 
-      console.log('=== SEAT STATUS DEBUG ===');
-      console.log('tripId:', tripId, 'routeId:', routeId);
-      console.log('segmentIds count:', segmentIds.length);
-      console.log('bookedFromBookings count:', bookedFromBookings.length);
-      console.log('Total booked seats:', bookedSeatIds.size);
-      console.log('=========================');
+  //     console.log('=== SEAT STATUS DEBUG ===');
+  //     console.log('tripId:', tripId, 'routeId:', routeId);
+  //     console.log('segmentIds count:', segmentIds.length);
+  //     console.log('bookedFromBookings count:', bookedFromBookings.length);
+  //     console.log('Total booked seats:', bookedSeatIds.size);
+  //     console.log('=========================');
 
-      const lockedSeatIds = bookedSeatIds;
+  //     const lockedSeatIds = bookedSeatIds;
 
-      const result = trip.bus.seats.map((seat) => {
-        const isLocked = lockedSeatIds.has(seat.id);
-        return {
-          seatId: seat.id,
-          seatNumber: seat.seatNumber,
-          status: isLocked ? 'BOOKED' : 'AVAILABLE',
-        };
-      });
+  //     const result = trip.bus.seats.map((seat) => {
+  //       const isLocked = lockedSeatIds.has(seat.id);
+  //       return {
+  //         seatId: seat.id,
+  //         seatNumber: seat.seatNumber,
+  //         status: isLocked ? 'BOOKED' : 'AVAILABLE',
+  //       };
+  //     });
 
-      return {
-        message: 'Fetched seat status successfully',
-        data: result,
-        meta: {
-          totalSeats: result.length,
-          availableSeats: result.filter((s) => s.status === 'AVAILABLE').length,
-        },
-      };
-    } catch (err) {
-      if (
-        err instanceof NotFoundException ||
-        err instanceof BadRequestException
-      ) {
-        throw err;
-      }
-      throw new InternalServerErrorException('Failed to fetch seat status', {
-        cause: err,
-      });
-    }
-  }
+  //     return {
+  //       message: 'Fetched seat status successfully',
+  //       data: result,
+  //       meta: {
+  //         totalSeats: result.length,
+  //         availableSeats: result.filter((s) => s.status === 'AVAILABLE').length,
+  //       },
+  //     };
+  //   } catch (err) {
+  //     if (
+  //       err instanceof NotFoundException ||
+  //       err instanceof BadRequestException
+  //     ) {
+  //       throw err;
+  //     }
+  //     throw new InternalServerErrorException('Failed to fetch seat status', {
+  //       cause: err,
+  //     });
+  //   }
+  // }
 
   /**
    * Search trips by city names and departure date.
@@ -1024,68 +1028,68 @@ export class TripsService {
     }
   }
 
-  async getUpcomingTrips(limit: number = 5) {
-    try {
-      const trips = await this.prisma.trips.findMany({
-        where: {
-          startTime: { gte: new Date() },
-          status: { not: TripStatus.cancelled },
-        },
-        orderBy: { startTime: 'asc' },
-        take: limit,
-        include: {
-          bus: {
-            select: {
-              plate: true,
-              _count: { select: { seats: true } },
-            },
-          },
-          _count: {
-            select: {
-              bookings: { where: { status: 'confirmed' } },
-            },
-          },
-          tripStops: {
-            orderBy: { sequence: 'asc' },
-            include: { location: true },
-          },
-        },
-      });
+  // async getUpcomingTrips(limit: number = 5) {
+  //   try {
+  //     const trips = await this.prisma.trips.findMany({
+  //       where: {
+  //         startTime: { gte: new Date() },
+  //         status: { not: TripStatus.cancelled },
+  //       },
+  //       orderBy: { startTime: 'asc' },
+  //       take: limit,
+  //       include: {
+  //         bus: {
+  //           select: {
+  //             plate: true,
+  //             _count: { select: { seats: true } },
+  //           },
+  //         },
+  //         _count: {
+  //           select: {
+  //             bookings: { where: { status: 'confirmed' } },
+  //           },
+  //         },
+  //         tripStops: {
+  //           orderBy: { sequence: 'asc' },
+  //           include: { location: true },
+  //         },
+  //       },
+  //     });
 
-      return trips.map((trip) => {
-        const origin = trip.tripStops[0]?.location?.city || 'Unknown';
-        const destination =
-          trip.tripStops[trip.tripStops.length - 1]?.location?.city ||
-          'Unknown';
+  //     return trips.map((trip) => {
+  //       const origin = trip.tripStops[0]?.location?.city || 'Unknown';
+  //       const destination =
+  //         trip.tripStops[trip.tripStops.length - 1]?.location?.city ||
+  //         'Unknown';
 
-        const totalSeats = trip.bus?._count?.seats || 0;
-        const bookedSeats = trip._count?.bookings || 0;
+  //       const totalSeats = trip.bus?._count?.seats || 0;
+  //       const bookedSeats = trip._count?.bookings || 0;
 
-        let displayStatus: string = trip.status;
-        if (bookedSeats >= totalSeats) {
-          displayStatus = 'Full';
-        } else if (
-          new Date(trip.startTime).getTime() - new Date().getTime() <
-          30 * 60 * 1000
-        ) {
-          displayStatus = 'Boarding';
-        }
+  //       let displayStatus: string = trip.status;
+  //       if (bookedSeats >= totalSeats) {
+  //         displayStatus = 'Full';
+  //       } else if (
+  //         new Date(trip.startTime).getTime() - new Date().getTime() <
+  //         30 * 60 * 1000
+  //       ) {
+  //         displayStatus = 'Boarding';
+  //       }
 
-        return {
-          id: trip.id,
-          route: `${origin} - ${destination}`,
-          startTime: trip.startTime,
-          busPlate: trip.bus?.plate || 'N/A',
-          totalSeats,
-          bookedSeats,
-          seatsInfo: `${bookedSeats}/${totalSeats}`,
-          status: displayStatus,
-        };
-      });
-    } catch (error: unknown) {
-      throw new InternalServerErrorException('Failed to fetch upcoming trips', {
-        cause: error,
-      });
-    }
-  }
+  //       return {
+  //         id: trip.id,
+  //         route: `${origin} - ${destination}`,
+  //         startTime: trip.startTime,
+  //         busPlate: trip.bus?.plate || 'N/A',
+  //         totalSeats,
+  //         bookedSeats,
+  //         seatsInfo: `${bookedSeats}/${totalSeats}`,
+  //         status: displayStatus,
+  //       };
+  //     });
+  //   } catch (error: unknown) {
+  //     throw new InternalServerErrorException('Failed to fetch upcoming trips', {
+  //       cause: error,
+  //     });
+  //   }
+  // }
 }

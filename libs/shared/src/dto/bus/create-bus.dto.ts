@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEnum, IsOptional, IsNotEmpty } from 'class-validator';
-import { BusType } from '@prisma/client-trip';
+import { BusType } from '@app/shared/enums';
 
 export class CreateBusDto {
   @ApiProperty({

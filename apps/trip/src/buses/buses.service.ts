@@ -8,7 +8,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { ClientProxy } from '@nestjs/microservices';
 import { RedisCacheService } from '@app/shared';
-import { CreateBusDto, UpdateBusDto, QueryBusesDto } from '@app/shared';
+import { CreateBusDto, UpdateBusDto, QueryBusesDto } from '@app/shared/dto';
 import { Prisma, BusType, Buses, Seats } from '@prisma/client-trip';
 
 @Injectable()

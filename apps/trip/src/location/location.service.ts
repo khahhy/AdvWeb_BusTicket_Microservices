@@ -1,22 +1,25 @@
 import {
+  Inject,
   Injectable,
   NotFoundException,
   InternalServerErrorException,
 } from '@nestjs/common';
-import { Prisma, Locations } from '@prisma/client';
-import { PrismaService } from 'src/prisma/prisma.service';
-import { ActivityLogsService } from 'src/activity-logs/activity-logs.service';
-import { RedisCacheService } from 'src/cache/redis-cache.service';
-import { CreateLocationDto } from './dto/create-location.dto';
-import { UpdateLocationDto } from './dto/update-location.dto';
-import { QueryLocationDto } from './dto/query-location.dto';
-import { normalizeCity } from 'src/common/utils/normalizeCity';
+import { Prisma, Locations } from '@prisma/client-trip';
+import { PrismaService } from '../prisma/prisma.service';
+import { ClientProxy } from '@nestjs/microservices';
+import { RedisCacheService } from '@app/shared';
+import {
+  CreateLocationDto,
+  UpdateLocationDto,
+  QueryLocationDto,
+} from '@app/shared/dto';
+import { normalizeCity } from '@app/shared';
 
 @Injectable()
 export class LocationsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly activityLogService: ActivityLogsService,
+    @Inject('SUPPORT_SERVICE') private readonly supportClient: ClientProxy,
     private readonly cacheManager: RedisCacheService,
   ) {}
 
@@ -162,7 +165,7 @@ export class LocationsService {
 
       await this.clearLocationCache();
 
-      await this.activityLogService.logAction({
+      this.supportClient.emit('log_activity', {
         userId: userId,
         action: 'CREATE_LOCATION',
         entityId: newLocation.id,
@@ -200,7 +203,7 @@ export class LocationsService {
 
       await this.clearLocationCache(id);
 
-      await this.activityLogService.logAction({
+      this.supportClient.emit('log_activity', {
         userId: userId,
         action: 'UPDATE_LOCATION',
         entityId: updatedLocation.id,
@@ -234,7 +237,7 @@ export class LocationsService {
       });
 
       await this.clearLocationCache(id);
-      await this.activityLogService.logAction({
+      this.supportClient.emit('log_activity', {
         userId: userId,
         action: 'DELETE_LOCATION',
         entityId: deletedLocation.id,

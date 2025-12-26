@@ -1,7 +1,7 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, EventPattern, Payload } from '@nestjs/microservices';
 import { ActivityLogsService } from './activity-logs.service';
-import { CreateActivityLogDto } from '@app/shared';
+import { CreateActivityLogDto } from '@app/shared/dto';
 
 @Controller()
 export class ActivityLogsController {

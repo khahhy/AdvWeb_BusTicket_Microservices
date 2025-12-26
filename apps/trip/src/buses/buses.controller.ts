@@ -1,7 +1,7 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { BusesService } from './buses.service';
-import { CreateBusDto, UpdateBusDto, QueryBusesDto } from '@app/shared';
+import { CreateBusDto, UpdateBusDto, QueryBusesDto } from '@app/shared/dto';
 
 @Controller()
 export class BusesController {

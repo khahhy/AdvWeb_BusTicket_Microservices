@@ -1,4 +1,4 @@
-import { UserRole } from '../enums/user-role.enum';
+import { UserRole } from '@app/shared/enums';
 import { Request } from 'express';
 
 // according to jwt strategy

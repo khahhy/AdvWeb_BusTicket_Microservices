@@ -1,7 +1,7 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client-support';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateActivityLogDto } from '@app/shared';
+import { CreateActivityLogDto } from '@app/shared/dto';
 
 @Injectable()
 export class ActivityLogsService {
@@ -15,8 +15,7 @@ export class ActivityLogsService {
           action: data.action,
           entityId: data.entityId,
           entityType: data.entityType,
-          // metadata: (data.metadata as Prisma.InputJsonValue) || {},
-          metadata: (data.metadata as any) || {},
+          metadata: (data.metadata as Prisma.InputJsonValue) || {},
           ipAddress: data.ipAddress,
           userAgent: data.userAgent,
         },

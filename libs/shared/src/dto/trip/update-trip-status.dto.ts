@@ -1,5 +1,5 @@
 import { IsEnum } from 'class-validator';
-import { TripStatus } from '@prisma/client-trip';
+import { TripStatus } from '@app/shared/enums';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class UpdateTripStatusDto {

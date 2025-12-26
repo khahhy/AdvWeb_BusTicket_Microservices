@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { UserStatus } from '@app/shared/enums/user-status.enum';
+import { UserStatus } from '@app/shared/enums';
 
 export class UpdateStatusDto {
   @ApiProperty({
