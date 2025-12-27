@@ -5,6 +5,7 @@ import {
   InternalServerErrorException,
   BadRequestException,
 } from '@nestjs/common';
+import { lastValueFrom } from 'rxjs';
 import { PrismaService } from '../prisma/prisma.service';
 import { ClientProxy } from '@nestjs/microservices';
 import { RedisCacheService } from '@app/shared';
@@ -12,14 +13,14 @@ import {
   CreateTripDto,
   TripQueryDto,
   SearchTripDto,
-  // UpdateTripDto,
+  UpdateTripDto,
 } from '@app/shared/dto';
 import { Prisma, Trips } from '@prisma/client-trip';
 import { TripStatus } from '@app/shared/enums';
 import { normalizeCity } from '@app/shared';
 
 @Injectable()
-export class TripScheduleService {
+export class TripsService {
   constructor(
     private readonly prisma: PrismaService,
     @Inject('SUPPORT_SERVICE') private readonly supportClient: ClientProxy,
@@ -168,17 +169,21 @@ export class TripScheduleService {
 
       await prisma.tripSegments.createMany({ data: segments });
 
-      this.supportClient.emit('log_activity', {
-        userId: userId,
-        action: 'CREATE_TRIP',
-        entityId: trip.id,
-        entityType: 'Trips',
-        metadata: {
-          tripId: trip.id,
-        },
-        ipAddress: ip,
-        userAgent: userAgent,
-      });
+      try {
+        await lastValueFrom(
+          this.supportClient.emit('log_activity', {
+            userId: userId,
+            action: 'CREATE_TRIP',
+            entityId: trip.id,
+            entityType: 'Trips',
+            metadata: { tripId: trip.id },
+            ipAddress: ip,
+            userAgent: userAgent,
+          }),
+        );
+      } catch (e) {
+        console.error(e);
+      }
 
       return prisma.trips.findUnique({
         where: { id: trip.id },
@@ -348,188 +353,192 @@ export class TripScheduleService {
     return trip;
   }
 
-  // async update(
-  //   tripId: string,
-  //   dto: UpdateTripDto,
-  //   userId: string,
-  //   ip: string,
-  //   userAgent: string,
-  // ) {
-  //   const trip = await this.prisma.trips.findUnique({
-  //     where: { id: tripId },
-  //     include: { bookings: true, tripStops: true, segments: true },
-  //   });
+  async update(
+    tripId: string,
+    dto: UpdateTripDto,
+    userId: string,
+    ip: string,
+    userAgent: string,
+  ) {
+    const trip = await this.prisma.trips.findUnique({
+      where: { id: tripId },
+      include: { tripStops: true, segments: true },
+    });
 
-  //   if (!trip) throw new NotFoundException('Trip not found');
+    if (!trip) throw new NotFoundException('Trip not found');
 
-  //   if (trip.status !== 'scheduled') {
-  //     throw new BadRequestException('Cannot update trip that is not scheduled');
-  //   }
+    if (trip.status !== 'scheduled') {
+      throw new BadRequestException('Cannot update trip that is not scheduled');
+    }
 
-  //   if (trip.bookings.length > 0) {
-  //     throw new BadRequestException(
-  //       'Cannot update trip with existing bookings',
-  //     );
-  //   }
+    // if (trip.bookings.length > 0) {
+    //   throw new BadRequestException(
+    //     'Cannot update trip with existing bookings',
+    //   );
+    // }
 
-  //   const { busId, stops } = dto;
+    const { busId, stops } = dto;
 
-  //   // Validate new busId
-  //   if (busId && busId !== trip.busId) {
-  //     const bus = await this.prisma.buses.findUnique({ where: { id: busId } });
-  //     if (!bus) throw new BadRequestException('Invalid busId');
-  //   }
+    // Validate new busId
+    if (busId && busId !== trip.busId) {
+      const bus = await this.prisma.buses.findUnique({ where: { id: busId } });
+      if (!bus) throw new BadRequestException('Invalid busId');
+    }
 
-  //   let startTime: Date = trip.startTime;
-  //   let endTime: Date = trip.endTime;
-  //   let tripName = trip.tripName;
+    let startTime: Date = trip.startTime;
+    let endTime: Date = trip.endTime;
+    let tripName = trip.tripName;
 
-  //   if (stops) {
-  //     if (stops.length < 2) {
-  //       throw new BadRequestException('A trip must have at least 2 stops');
-  //     }
+    if (stops) {
+      if (stops.length < 2) {
+        throw new BadRequestException('A trip must have at least 2 stops');
+      }
 
-  //     for (let i = 0; i < stops.length; i++) {
-  //       const curr = stops[i];
-  //       const arrival = curr.arrivalTime
-  //         ? new Date(curr.arrivalTime).getTime()
-  //         : null;
-  //       const departure = curr.departureTime
-  //         ? new Date(curr.departureTime).getTime()
-  //         : null;
+      for (let i = 0; i < stops.length; i++) {
+        const curr = stops[i];
+        const arrival = curr.arrivalTime
+          ? new Date(curr.arrivalTime).getTime()
+          : null;
+        const departure = curr.departureTime
+          ? new Date(curr.departureTime).getTime()
+          : null;
 
-  //       if (arrival && departure && arrival > departure) {
-  //         throw new BadRequestException(
-  //           `Stop ${i + 1}: arrivalTime must be <= departureTime`,
-  //         );
-  //       }
+        if (arrival && departure && arrival > departure) {
+          throw new BadRequestException(
+            `Stop ${i + 1}: arrivalTime must be <= departureTime`,
+          );
+        }
 
-  //       if (i > 0) {
-  //         const prevDeparture = stops[i - 1].departureTime
-  //           ? new Date(stops[i - 1].departureTime).getTime()
-  //           : null;
+        if (i > 0) {
+          const prevDeparture = stops[i - 1].departureTime
+            ? new Date(stops[i - 1].departureTime).getTime()
+            : null;
 
-  //         if (arrival && prevDeparture && arrival < prevDeparture) {
-  //           throw new BadRequestException(
-  //             `Stop ${i + 1}: arrivalTime overlaps with previous stop`,
-  //           );
-  //         }
-  //       }
-  //     }
+          if (arrival && prevDeparture && arrival < prevDeparture) {
+            throw new BadRequestException(
+              `Stop ${i + 1}: arrivalTime overlaps with previous stop`,
+            );
+          }
+        }
+      }
 
-  //     const firstStop = stops[0];
-  //     const lastStop = stops[stops.length - 1];
+      const firstStop = stops[0];
+      const lastStop = stops[stops.length - 1];
 
-  //     const firstLocation = await this.prisma.locations.findUnique({
-  //       where: { id: stops[0].locationId },
-  //     });
-  //     const lastLocation = await this.prisma.locations.findUnique({
-  //       where: { id: stops[stops.length - 1].locationId },
-  //     });
+      const firstLocation = await this.prisma.locations.findUnique({
+        where: { id: stops[0].locationId },
+      });
+      const lastLocation = await this.prisma.locations.findUnique({
+        where: { id: stops[stops.length - 1].locationId },
+      });
 
-  //     if (!firstLocation || !lastLocation) {
-  //       throw new BadRequestException(
-  //         'Invalid locationId for first or last stop',
-  //       );
-  //     }
+      if (!firstLocation || !lastLocation) {
+        throw new BadRequestException(
+          'Invalid locationId for first or last stop',
+        );
+      }
 
-  //     tripName = `${firstLocation.city} - ${lastLocation.city}`;
-  //     startTime = new Date(firstStop.departureTime);
-  //     endTime = new Date(lastStop.arrivalTime);
-  //   }
+      tripName = `${firstLocation.city} - ${lastLocation.city}`;
+      startTime = new Date(firstStop.departureTime);
+      endTime = new Date(lastStop.arrivalTime);
+    }
 
-  //   const overlappingTrip = await this.prisma.trips.findFirst({
-  //     where: {
-  //       busId,
-  //       id: { not: tripId },
-  //       OR: [
-  //         {
-  //           startTime: { lte: endTime },
-  //           endTime: { gte: startTime },
-  //         },
-  //       ],
-  //       status: { not: 'cancelled' },
-  //     },
-  //   });
+    const overlappingTrip = await this.prisma.trips.findFirst({
+      where: {
+        busId,
+        id: { not: tripId },
+        OR: [
+          {
+            startTime: { lte: endTime },
+            endTime: { gte: startTime },
+          },
+        ],
+        status: { not: 'cancelled' },
+      },
+    });
 
-  //   if (overlappingTrip) {
-  //     throw new BadRequestException(
-  //       'Bus has another trip overlapping with this time',
-  //     );
-  //   }
+    if (overlappingTrip) {
+      throw new BadRequestException(
+        'Bus has another trip overlapping with this time',
+      );
+    }
 
-  //   return this.prisma.$transaction(async (prisma) => {
-  //     await prisma.trips.update({
-  //       where: { id: tripId },
-  //       data: { busId: busId ?? trip.busId, tripName, startTime, endTime },
-  //     });
+    return this.prisma.$transaction(async (prisma) => {
+      await prisma.trips.update({
+        where: { id: tripId },
+        data: { busId: busId ?? trip.busId, tripName, startTime, endTime },
+      });
 
-  //     if (stops) {
-  //       await prisma.tripSegments.deleteMany({ where: { tripId } });
-  //       await prisma.tripStops.deleteMany({ where: { tripId } });
+      if (stops) {
+        await prisma.tripSegments.deleteMany({ where: { tripId } });
+        await prisma.tripStops.deleteMany({ where: { tripId } });
 
-  //       await prisma.tripStops.createMany({
-  //         data: stops.map((s, idx) => ({
-  //           tripId,
-  //           locationId: s.locationId,
-  //           sequence: idx + 1,
-  //           arrivalTime: idx === 0 ? null : s.arrivalTime,
-  //           departureTime: idx === stops.length - 1 ? null : s.departureTime,
-  //         })),
-  //       });
+        await prisma.tripStops.createMany({
+          data: stops.map((s, idx) => ({
+            tripId,
+            locationId: s.locationId,
+            sequence: idx + 1,
+            arrivalTime: idx === 0 ? null : s.arrivalTime,
+            departureTime: idx === stops.length - 1 ? null : s.departureTime,
+          })),
+        });
 
-  //       const createdStops = await prisma.tripStops.findMany({
-  //         where: { tripId },
-  //         orderBy: { sequence: 'asc' },
-  //       });
+        const createdStops = await prisma.tripStops.findMany({
+          where: { tripId },
+          orderBy: { sequence: 'asc' },
+        });
 
-  //       const segments = createdStops.slice(0, -1).map((fromStop, idx) => {
-  //         const toStop = createdStops[idx + 1];
-  //         const durationMinutes =
-  //           fromStop.departureTime && toStop.arrivalTime
-  //             ? Math.round(
-  //                 (new Date(toStop.arrivalTime).getTime() -
-  //                   new Date(fromStop.departureTime).getTime()) /
-  //                   60000,
-  //               )
-  //             : null;
-  //         return {
-  //           tripId,
-  //           fromStopId: fromStop.id,
-  //           toStopId: toStop.id,
-  //           segmentIndex: idx + 1,
-  //           durationMinutes,
-  //         };
-  //       });
+        const segments = createdStops.slice(0, -1).map((fromStop, idx) => {
+          const toStop = createdStops[idx + 1];
+          const durationMinutes =
+            fromStop.departureTime && toStop.arrivalTime
+              ? Math.round(
+                  (new Date(toStop.arrivalTime).getTime() -
+                    new Date(fromStop.departureTime).getTime()) /
+                    60000,
+                )
+              : null;
+          return {
+            tripId,
+            fromStopId: fromStop.id,
+            toStopId: toStop.id,
+            segmentIndex: idx + 1,
+            durationMinutes,
+          };
+        });
 
-  //       await prisma.tripSegments.createMany({ data: segments });
-  //     }
-  //     await this.clearTripCache(tripId);
-  //     this.supportClient.emit('log_activity', {
-  //       userId: userId,
-  //       action: 'UPDATE_TRIP',
-  //       entityType: 'Trips',
-  //       entityId: trip.id,
-  //       metadata: {
-  //         tripId: trip.id,
-  //       },
-  //       ipAddress: ip,
-  //       userAgent: userAgent,
-  //     });
+        await prisma.tripSegments.createMany({ data: segments });
+      }
+      await this.clearTripCache(tripId);
+      try {
+        await lastValueFrom(
+          this.supportClient.emit('log_activity', {
+            userId,
+            action: 'UPDATE_TRIP',
+            entityType: 'Trips',
+            entityId: trip.id,
+            metadata: { tripId: trip.id },
+            ipAddress: ip,
+            userAgent: userAgent,
+          }),
+        );
+      } catch (e) {
+        console.error(e);
+      }
 
-  //     return prisma.trips.findUnique({
-  //       where: { id: tripId },
-  //       include: {
-  //         bus: true,
-  //         tripStops: {
-  //           orderBy: { sequence: 'asc' },
-  //           include: { location: true },
-  //         },
-  //         segments: { orderBy: { segmentIndex: 'asc' } },
-  //       },
-  //     });
-  //   });
-  // }
+      return prisma.trips.findUnique({
+        where: { id: tripId },
+        include: {
+          bus: true,
+          tripStops: {
+            orderBy: { sequence: 'asc' },
+            include: { location: true },
+          },
+          segments: { orderBy: { segmentIndex: 'asc' } },
+        },
+      });
+    });
+  }
 
   async updateStatus(
     tripId: string,
@@ -551,58 +560,66 @@ export class TripScheduleService {
     });
 
     await this.clearTripCache(tripId);
-    this.supportClient.emit('log_activity', {
-      userId: userId,
-      action: 'UPDATE_STATUS_TRIP',
-      entityType: 'Trips',
-      entityId: trip.id,
-      metadata: {
-        tripId: trip.id,
-      },
-      ipAddress: ip,
-      userAgent: userAgent,
-    });
+    try {
+      await lastValueFrom(
+        this.supportClient.emit('log_activity', {
+          userId,
+          action: 'UPDATE_STATUS_TRIP',
+          entityType: 'Trips',
+          entityId: trip.id,
+          metadata: { tripId: trip.id },
+          ipAddress: ip,
+          userAgent: userAgent,
+        }),
+      );
+    } catch (e) {
+      console.error(e);
+    }
 
     return updatedTrip;
   }
 
-  // async remove(tripId: string, userId: string, ip: string, userAgent: string) {
-  //   const trip = await this.prisma.trips.findUnique({
-  //     where: { id: tripId },
-  //     include: { bookings: true },
-  //   });
+  async remove(tripId: string, userId: string, ip: string, userAgent: string) {
+    const trip = await this.prisma.trips.findUnique({
+      where: { id: tripId },
+      // include: { bookings: true },
+    });
 
-  //   if (!trip) {
-  //     throw new NotFoundException('Trip not found');
-  //   }
+    if (!trip) {
+      throw new NotFoundException('Trip not found');
+    }
 
-  //   if (trip.bookings.length > 0) {
-  //     throw new BadRequestException(
-  //       'Cannot delete trip with existing bookings',
-  //     );
-  //   }
+    // if (trip.bookings.length > 0) {
+    //   throw new BadRequestException(
+    //     'Cannot delete trip with existing bookings',
+    //   );
+    // }
 
-  //   this.supportClient.emit('log_activity', {
-  //     userId: userId,
-  //     action: 'DELETE_TRIP',
-  //     entityType: 'Trips',
-  //     entityId: trip.id,
-  //     metadata: {
-  //       tripId: trip.id,
-  //     },
-  //     ipAddress: ip,
-  //     userAgent: userAgent,
-  //   });
+    try {
+      await lastValueFrom(
+        this.supportClient.emit('log_activity', {
+          userId,
+          action: 'DELETE_TRIP',
+          entityType: 'Trips',
+          entityId: trip.id,
+          metadata: { tripId: trip.id },
+          ipAddress: ip,
+          userAgent: userAgent,
+        }),
+      );
+    } catch (e) {
+      console.error(e);
+    }
 
-  //   await this.clearTripCache(tripId);
-  //   return this.prisma.$transaction(async (prisma) => {
-  //     await prisma.tripSegments.deleteMany({ where: { tripId } });
+    await this.clearTripCache(tripId);
+    return this.prisma.$transaction(async (prisma) => {
+      await prisma.tripSegments.deleteMany({ where: { tripId } });
 
-  //     await prisma.tripStops.deleteMany({ where: { tripId } });
+      await prisma.tripStops.deleteMany({ where: { tripId } });
 
-  //     return prisma.trips.delete({ where: { id: tripId } });
-  //   });
-  // }
+      return prisma.trips.delete({ where: { id: tripId } });
+    });
+  }
 
   // async getSeatsStatus(tripId: string, routeId: string) {
   //   try {

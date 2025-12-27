@@ -1,28 +1,20 @@
 import { Module } from '@nestjs/common';
 import { ClientsModule, Transport } from '@nestjs/microservices';
-import { RedisCacheModule } from '@app/shared';
-import { RoutesService } from './routes.service';
-import { SettingModule } from '../setting/setting.module';
-import { PrismaModule } from '../prisma/prisma.module';
 import { RoutesController } from './routes.controller';
 
 @Module({
   imports: [
-    PrismaModule,
-    RedisCacheModule,
     ClientsModule.register([
       {
-        name: 'SUPPORT_SERVICE',
+        name: 'TRIP_SERVICE',
         transport: Transport.TCP,
         options: {
           host: 'localhost',
-          port: 3002, // port Support
+          port: 3003,
         },
       },
     ]),
-    SettingModule,
   ],
   controllers: [RoutesController],
-  providers: [RoutesService],
 })
 export class RoutesModule {}

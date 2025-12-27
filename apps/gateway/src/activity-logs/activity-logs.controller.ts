@@ -14,7 +14,16 @@ import {
   ApiResponse,
   ApiParam,
 } from '@nestjs/swagger';
-import { JwtAuthGuard, RolesGuard, UserRole, Roles } from '@app/shared';
+import { firstValueFrom } from 'rxjs';
+import {
+  JwtAuthGuard,
+  RolesGuard,
+  UserRole,
+  Roles,
+  BaseResponse,
+  handleRpcError,
+  QueryActivityLogDto,
+} from '@app/shared';
 
 @ApiTags('activity-logs')
 @Controller('activity-logs')
@@ -32,11 +41,20 @@ export class ActivityLogsController {
     status: 200,
     description: 'Fetched all activity logs successfully.',
   })
-  findAll(@Query('page') page = 1, @Query('limit') limit = 20) {
-    return this.supportClient.send(
-      { cmd: 'get_all_logs' },
-      { page: Number(page), limit: Number(limit) },
-    );
+  async findAll(@Query() query: QueryActivityLogDto) {
+    try {
+      return await firstValueFrom(
+        this.supportClient.send<BaseResponse<any>>(
+          { cmd: 'get_all_logs' },
+          {
+            page: Number(query.page) || 1,
+            limit: Number(query.limit) || 20,
+          },
+        ),
+      );
+    } catch (e) {
+      handleRpcError(e);
+    }
   }
 
   @ApiOperation({ summary: 'Admin: Get history of a specific user' })
@@ -46,7 +64,44 @@ export class ActivityLogsController {
     description: 'Fetched user history successfully.',
   })
   @Get('user/:userId')
-  findByUser(@Param('userId') userId: string) {
-    return this.supportClient.send({ cmd: 'get_logs_by_user' }, userId);
+  async findByUser(@Param('userId') userId: string) {
+    try {
+      return await firstValueFrom(
+        this.supportClient.send<BaseResponse<any>>(
+          { cmd: 'get_logs_by_user' },
+          userId,
+        ),
+      );
+    } catch (e) {
+      handleRpcError(e);
+    }
+  }
+
+  @ApiOperation({
+    summary: 'Admin: Get history of a specific entity (e.g., Bus, Trip)',
+  })
+  @ApiParam({
+    name: 'type',
+    description:
+      'Entity Type: Buses, Locations, Routes, Settings, Trips, Users',
+    type: String,
+  })
+  @ApiParam({ name: 'id', description: 'Entity UUID', type: String })
+  @ApiResponse({
+    status: 200,
+    description: 'Fetched entity history successfully.',
+  })
+  @Get('entity/:type/:id')
+  async findByEntity(@Param('type') type: string, @Param('id') id: string) {
+    try {
+      return await firstValueFrom(
+        this.supportClient.send<BaseResponse<any>>(
+          { cmd: 'get_logs_by_entity' },
+          { entityId: id, entityType: type },
+        ),
+      );
+    } catch (e) {
+      handleRpcError(e);
+    }
   }
 }

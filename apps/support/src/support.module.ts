@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { EmailModule } from './email/email.module';
 import { ActivityLogsModule } from './activity-logs/activity-logs.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { PrismaModule } from './prisma/prisma.module';
     PrismaModule,
     EmailModule,
     ActivityLogsModule,
+    NotificationsModule,
   ],
   controllers: [],
   providers: [],

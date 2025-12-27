@@ -1,10 +1,20 @@
 import { Module } from '@nestjs/common';
-import { BookingController } from './booking.controller';
-import { BookingService } from './booking.service';
+import { ConfigModule } from '@nestjs/config';
+import { PrismaModule } from './prisma/prisma.module';
+import { ETicketModule } from './eticket/eticket.module';
+import { BookingsModule } from './booking/bookings.module';
 
 @Module({
-  imports: [],
-  controllers: [BookingController],
-  providers: [BookingService],
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: ['.env', 'apps/booking/.env'],
+    }),
+    PrismaModule,
+    ETicketModule,
+    BookingsModule,
+  ],
+  controllers: [],
+  providers: [],
 })
 export class BookingModule {}

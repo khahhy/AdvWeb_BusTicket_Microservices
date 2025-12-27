@@ -7,3 +7,7 @@ export * from './location';
 export * from './route';
 export * from './trip';
 export * from './setting';
+
+export * from './booking';
+
+export * from './payment';

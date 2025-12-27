@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ClientsModule, Transport } from '@nestjs/microservices';
-import { TripScheduleService } from './trip-schedule.service';
-import { TripScheduleController } from './trip-schedule.controller';
+import { TripsService } from './trips.service';
+import { TripsController } from './trips.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 import { RedisCacheModule } from '@app/shared';
 
@@ -20,7 +20,7 @@ import { RedisCacheModule } from '@app/shared';
       },
     ]),
   ],
-  controllers: [TripScheduleController],
-  providers: [TripScheduleService],
+  controllers: [TripsController],
+  providers: [TripsService],
 })
-export class TripScheduleModule {}
+export class TripsModule {}

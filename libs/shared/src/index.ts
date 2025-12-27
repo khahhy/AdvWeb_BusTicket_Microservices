@@ -24,6 +24,7 @@ export * from './type';
 // utils
 export * from './utils/generateBookingReference';
 export * from './utils/normalizeCity';
+export * from './utils/rpc-error';
 
 export * from './auth/shared-auth.module';
 export * from './auth/guards/jwt-auth.guard';

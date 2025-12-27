@@ -6,6 +6,7 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
+import { lastValueFrom } from 'rxjs';
 import { Prisma } from '@prisma/client-identity';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisCacheService } from '@app/shared';
@@ -17,17 +18,7 @@ import type {
   UpdateStatusDto,
   QueryUserDto,
 } from '@app/shared/dto';
-
-export interface StatItem {
-  value: number;
-  growth: number;
-}
-
-export interface UserStatsData {
-  total: StatItem;
-  newThisMonth: StatItem;
-  active: StatItem;
-}
+import { UserStatsData } from '@app/shared/type';
 
 @Injectable()
 export class UserService {
@@ -149,18 +140,20 @@ export class UserService {
         },
       });
 
-      this.supportClient.emit('log_activity', {
-        userId: userId,
-        action: 'CREATE_ADMIN',
-        entityType: 'Users',
-        entityId: newUser.id,
-        metadata: {
-          userId: newUser.id,
-          email: newUser.email,
-        },
-        ipAddress: ip,
-        userAgent: userAgent,
-      });
+      await lastValueFrom(
+        this.supportClient.emit('log_activity', {
+          userId: userId,
+          action: 'CREATE_ADMIN',
+          entityType: 'Users',
+          entityId: newUser.id,
+          metadata: {
+            userId: newUser.id,
+            email: newUser.email,
+          },
+          ipAddress: ip,
+          userAgent: userAgent,
+        }),
+      );
 
       return { message: 'Admin created successfully', data: newUser };
     } catch (err) {
@@ -233,18 +226,20 @@ export class UserService {
         data: { role: dto.role },
       });
 
-      this.supportClient.emit('log_activity', {
-        userId: userId,
-        action: 'UPDATE_ROLE_USER',
-        entityType: 'Users',
-        entityId: updatedUser.id,
-        metadata: {
-          userId: updatedUser.id,
-          email: updatedUser.email,
-        },
-        ipAddress: ip,
-        userAgent: userAgent,
-      });
+      await lastValueFrom(
+        this.supportClient.emit('log_activity', {
+          userId: userId,
+          action: 'UPDATE_ROLE_USER',
+          entityType: 'Users',
+          entityId: updatedUser.id,
+          metadata: {
+            userId: updatedUser.id,
+            email: updatedUser.email,
+          },
+          ipAddress: ip,
+          userAgent: userAgent,
+        }),
+      );
 
       return { message: 'User role updated successfully', data: updatedUser };
     } catch (err) {
@@ -270,18 +265,20 @@ export class UserService {
         data: { status: dto.status },
       });
 
-      this.supportClient.emit('log_activity', {
-        userId: userId,
-        action: 'UPDATE_STATUS_USER',
-        entityType: 'Users',
-        entityId: updatedUser.id,
-        metadata: {
-          userId: updatedUser.id,
-          status: updatedUser.status,
-        },
-        ipAddress: ip,
-        userAgent: userAgent,
-      });
+      await lastValueFrom(
+        this.supportClient.emit('log_activity', {
+          userId: userId,
+          action: 'UPDATE_STATUS_USER',
+          entityType: 'Users',
+          entityId: updatedUser.id,
+          metadata: {
+            userId: updatedUser.id,
+            status: updatedUser.status,
+          },
+          ipAddress: ip,
+          userAgent: userAgent,
+        }),
+      );
 
       return { message: 'User status updated successfully', data: updatedUser };
     } catch (err) {
@@ -298,17 +295,19 @@ export class UserService {
 
       const deletedUser = await this.prisma.users.delete({ where: { id } });
 
-      this.supportClient.emit('log_activity', {
-        userId: userId,
-        action: 'DELETE_USER',
-        entityType: 'Users',
-        entityId: deletedUser.id,
-        metadata: {
-          userId: deletedUser.id,
-        },
-        ipAddress: ip,
-        userAgent: userAgent,
-      });
+      await lastValueFrom(
+        this.supportClient.emit('log_activity', {
+          userId: userId,
+          action: 'DELETE_USER',
+          entityType: 'Users',
+          entityId: deletedUser.id,
+          metadata: {
+            userId: deletedUser.id,
+          },
+          ipAddress: ip,
+          userAgent: userAgent,
+        }),
+      );
 
       return { message: 'User deleted successfully', data: deletedUser };
     } catch (err) {

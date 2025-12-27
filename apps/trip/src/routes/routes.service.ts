@@ -35,6 +35,7 @@ import {
   SortOrder,
 } from '@app/shared/enums';
 import { TripsForRouteResponse, TopPerformingRoute } from '@app/shared/type';
+import { lastValueFrom } from 'rxjs';
 
 @Injectable()
 export class RoutesService {
@@ -118,16 +119,21 @@ export class RoutesService {
       });
 
       await this.clearRouteCache();
-
-      this.supportClient.emit('log_activity', {
-        userId: userId,
-        action: 'CREATE_ROUTE',
-        entityId: route.id,
-        entityType: 'Routes',
-        metadata: { routeId: route.id },
-        ipAddress: ip,
-        userAgent: userAgent,
-      });
+      try {
+        await lastValueFrom(
+          this.supportClient.emit('log_activity', {
+            userId: userId,
+            action: 'CREATE_ROUTE',
+            entityId: route.id,
+            entityType: 'Routes',
+            metadata: { routeId: route.id },
+            ipAddress: ip,
+            userAgent: userAgent,
+          }),
+        );
+      } catch (e) {
+        console.error(e);
+      }
 
       return { message: 'Route created successfully', data: route };
     } catch (err) {
@@ -272,15 +278,21 @@ export class RoutesService {
       });
 
       await this.clearRouteCache(id);
-      this.supportClient.emit('log_activity', {
-        userId: userId,
-        action: 'UPDATE_ROUTE',
-        entityId: updatedRoute.id,
-        entityType: 'Routes',
-        metadata: { routeId: updatedRoute.id },
-        ipAddress: ip,
-        userAgent: userAgent,
-      });
+      try {
+        await lastValueFrom(
+          this.supportClient.emit('log_activity', {
+            userId: userId,
+            action: 'UPDATE_ROUTE',
+            entityId: updatedRoute.id,
+            entityType: 'Routes',
+            metadata: { routeId: updatedRoute.id },
+            ipAddress: ip,
+            userAgent: userAgent,
+          }),
+        );
+      } catch (e) {
+        console.error(e);
+      }
 
       return { message: 'Route updated successfully', data: updatedRoute };
     } catch (err) {
@@ -321,6 +333,8 @@ export class RoutesService {
   //     ]);
 
   //     await this.clearRouteCache(id);
+  // try {
+  //     await lastValueFrom(
   //     this.supportClient.emit('log_activity', {
   //       userId: userId,
   //       action: 'DELETE_ROUTE',
@@ -329,7 +343,11 @@ export class RoutesService {
   //       metadata: { routeId: id },
   //       ipAddress: ip,
   //       userAgent: userAgent,
-  //     });
+  //     }),
+  //  );
+  //   } catch (e) {
+  //     console.error(e);
+  //   }
 
   //     return {
   //       message: 'Route and associated trip-maps deleted successfully',
@@ -541,14 +559,20 @@ export class RoutesService {
       const [newTripRouteMap] = await this.prisma.$transaction(operations);
 
       await this.clearTripMapCache(tripId, routeId);
-      this.supportClient.emit('log_activity', {
-        userId: userId,
-        action: 'CREATE_TRIP_ROUTE_MAP',
-        entityType: 'Routes',
-        metadata: { routeId: routeId, tripId: tripId },
-        ipAddress: ip,
-        userAgent: userAgent,
-      });
+      try {
+        await lastValueFrom(
+          this.supportClient.emit('log_activity', {
+            userId: userId,
+            action: 'CREATE_TRIP_ROUTE_MAP',
+            entityType: 'Routes',
+            metadata: { routeId: routeId, tripId: tripId },
+            ipAddress: ip,
+            userAgent: userAgent,
+          }),
+        );
+      } catch (e) {
+        console.error(e);
+      }
 
       return {
         message: 'Trip Route Map created successfully',
@@ -607,6 +631,8 @@ export class RoutesService {
   //     });
 
   //     await this.clearTripMapCache(tripId, routeId);
+  // try {
+  //     await lastValueFrom(
   //     this.supportClient.emit('log_activity', {
   //       userId: userId,
   //       action: 'DELETE_TRIP_ROUTE_MAP',
@@ -614,7 +640,11 @@ export class RoutesService {
   //       metadata: { routeId: routeId, tripId: tripId },
   //       ipAddress: ip,
   //       userAgent: userAgent,
-  //     });
+  //     }),
+  // );
+  //   } catch (e) {
+  //     console.error(e);
+  //   }
 
   //     return { message: 'TripRouteMap deleted successfully' };
   //   } catch (err) {

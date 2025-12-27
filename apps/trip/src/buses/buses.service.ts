@@ -10,6 +10,7 @@ import { ClientProxy } from '@nestjs/microservices';
 import { RedisCacheService } from '@app/shared';
 import { CreateBusDto, UpdateBusDto, QueryBusesDto } from '@app/shared/dto';
 import { Prisma, BusType, Buses, Seats } from '@prisma/client-trip';
+import { lastValueFrom } from 'rxjs';
 
 @Injectable()
 export class BusesService {
@@ -95,15 +96,21 @@ export class BusesService {
         data: seats,
       });
 
-      this.supportClient.emit('log_activity', {
-        userId: userId,
-        action: 'CREATE_BUS',
-        entityId: bus.id,
-        entityType: 'Buses',
-        metadata: { busId: bus.id, plate: bus.plate },
-        ipAddress: ip,
-        userAgent: userAgent,
-      });
+      try {
+        await lastValueFrom(
+          this.supportClient.emit('log_activity', {
+            userId: userId,
+            action: 'CREATE_BUS',
+            entityId: bus.id,
+            entityType: 'Buses',
+            metadata: { busId: bus.id, plate: bus.plate },
+            ipAddress: ip,
+            userAgent: userAgent,
+          }),
+        );
+      } catch (logErr) {
+        console.error('Failed to log create bus activity', logErr);
+      }
 
       await this.cacheManager.delByPattern('buses:all*');
 
@@ -200,15 +207,21 @@ export class BusesService {
         },
       });
 
-      this.supportClient.emit('log_activity', {
-        userId: userId,
-        action: 'UPDATE_BUS',
-        entityId: bus.id,
-        entityType: 'Buses',
-        metadata: { busId: bus.id, changes: data },
-        ipAddress: ip,
-        userAgent: userAgent,
-      });
+      try {
+        await lastValueFrom(
+          this.supportClient.emit('log_activity', {
+            userId: userId,
+            action: 'UPDATE_BUS',
+            entityId: bus.id,
+            entityType: 'Buses',
+            metadata: { busId: bus.id, changes: data },
+            ipAddress: ip,
+            userAgent: userAgent,
+          }),
+        );
+      } catch (logErr) {
+        console.error('Failed to log update bus activity', logErr);
+      }
 
       await this.cacheManager.del(`buses:detail:${id}`);
       await this.cacheManager.delByPattern('buses:all*');
@@ -232,15 +245,21 @@ export class BusesService {
         this.prisma.buses.delete({ where: { id } }),
       ]);
 
-      this.supportClient.emit('log_activity', {
-        userId: userId,
-        action: 'DELETE_BUS',
-        entityId: bus.id,
-        entityType: 'Buses',
-        metadata: { busId: bus.id, plate: bus.plate },
-        ipAddress: ip,
-        userAgent: userAgent,
-      });
+      try {
+        await lastValueFrom(
+          this.supportClient.emit('log_activity', {
+            userId: userId,
+            action: 'DELETE_BUS',
+            entityId: bus.id,
+            entityType: 'Buses',
+            metadata: { busId: bus.id, plate: bus.plate },
+            ipAddress: ip,
+            userAgent: userAgent,
+          }),
+        );
+      } catch (logErr) {
+        console.error('Failed to log delete bus activity', logErr);
+      }
 
       await Promise.all([
         this.cacheManager.del(`buses:detail:${id}`),

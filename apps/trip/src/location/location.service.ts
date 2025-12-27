@@ -14,6 +14,7 @@ import {
   QueryLocationDto,
 } from '@app/shared/dto';
 import { normalizeCity } from '@app/shared';
+import { lastValueFrom } from 'rxjs';
 
 @Injectable()
 export class LocationsService {
@@ -165,15 +166,21 @@ export class LocationsService {
 
       await this.clearLocationCache();
 
-      this.supportClient.emit('log_activity', {
-        userId: userId,
-        action: 'CREATE_LOCATION',
-        entityId: newLocation.id,
-        entityType: 'Locations',
-        metadata: { locationId: newLocation.id },
-        ipAddress: ip,
-        userAgent: userAgent,
-      });
+      try {
+        await lastValueFrom(
+          this.supportClient.emit('log_activity', {
+            userId: userId,
+            action: 'CREATE_LOCATION',
+            entityId: newLocation.id,
+            entityType: 'Locations',
+            metadata: { locationId: newLocation.id },
+            ipAddress: ip,
+            userAgent: userAgent,
+          }),
+        );
+      } catch (logErr) {
+        console.error('Failed to log create location activity', logErr);
+      }
 
       return { message: 'Location created successfully', data: newLocation };
     } catch (err) {
@@ -203,15 +210,21 @@ export class LocationsService {
 
       await this.clearLocationCache(id);
 
-      this.supportClient.emit('log_activity', {
-        userId: userId,
-        action: 'UPDATE_LOCATION',
-        entityId: updatedLocation.id,
-        entityType: 'Locations',
-        metadata: { locationId: updatedLocation.id },
-        ipAddress: ip,
-        userAgent: userAgent,
-      });
+      try {
+        await lastValueFrom(
+          this.supportClient.emit('log_activity', {
+            userId: userId,
+            action: 'UPDATE_LOCATION',
+            entityId: updatedLocation.id,
+            entityType: 'Locations',
+            metadata: { locationId: updatedLocation.id },
+            ipAddress: ip,
+            userAgent: userAgent,
+          }),
+        );
+      } catch (logErr) {
+        console.error('Failed to log update location activity', logErr);
+      }
 
       return {
         message: 'Location updated successfully',
@@ -237,15 +250,21 @@ export class LocationsService {
       });
 
       await this.clearLocationCache(id);
-      this.supportClient.emit('log_activity', {
-        userId: userId,
-        action: 'DELETE_LOCATION',
-        entityId: deletedLocation.id,
-        entityType: 'Locations',
-        metadata: { locationId: deletedLocation.id },
-        ipAddress: ip,
-        userAgent: userAgent,
-      });
+      try {
+        await lastValueFrom(
+          this.supportClient.emit('log_activity', {
+            userId: userId,
+            action: 'DELETE_LOCATION',
+            entityId: deletedLocation.id,
+            entityType: 'Locations',
+            metadata: { locationId: deletedLocation.id },
+            ipAddress: ip,
+            userAgent: userAgent,
+          }),
+        );
+      } catch (logErr) {
+        console.error('Failed to log delete location activity', logErr);
+      }
 
       return {
         message: 'Location deleted successfully',

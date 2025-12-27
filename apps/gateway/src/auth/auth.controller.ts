@@ -8,8 +8,6 @@ import {
   Req,
   Res,
   Inject,
-  HttpException,
-  HttpStatus,
   Patch,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
@@ -27,10 +25,14 @@ import {
   ForgotPasswordDto,
   ResetPasswordDto,
   UpdateProfileDto,
-  type RequestWithGoogleUser,
-  type RequestWithUser,
-  JwtAuthGuard,
-} from '@app/shared';
+  UserDto,
+} from '@app/shared/dto';
+import type {
+  RequestWithGoogleUser,
+  RequestWithUser,
+  BaseResponse,
+} from '@app/shared/type';
+import { JwtAuthGuard, handleRpcError } from '@app/shared';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
 
 @ApiTags('auth')
@@ -40,51 +42,47 @@ export class AuthController {
     @Inject('IDENTITY_SERVICE') private readonly identityClient: ClientProxy,
   ) {}
 
-  private handleAuthError(error: any) {
-    const err = error as any;
-    let status = Number(err.statusCode || err.status);
-
-    if (isNaN(status)) {
-      status = HttpStatus.BAD_REQUEST;
-    }
-
-    throw new HttpException(err.message || 'Internal Server Error', status);
-  }
-
-  @ApiOperation({ summary: 'Register a new user' })
+  @ApiOperation({ summary: 'Register a new user - sends verification email' })
   @Post('signup')
   async signUp(@Body() dto: SignUpDto) {
     try {
       return await firstValueFrom(
-        this.identityClient.send<any>({ cmd: 'auth_signup' }, dto),
+        this.identityClient.send<BaseResponse<{ email: string }>>(
+          { cmd: 'auth_signup' },
+          dto,
+        ),
       );
     } catch (error) {
-      this.handleAuthError(error);
+      handleRpcError(error);
     }
   }
 
-  @ApiOperation({ summary: 'Sign in' })
+  @ApiOperation({ summary: 'Sign in with email and password' })
   @Post('signin')
   async signIn(@Body() dto: SignInDto) {
     try {
       return await firstValueFrom(
-        this.identityClient.send<any>({ cmd: 'auth_signin' }, dto),
+        this.identityClient.send<
+          BaseResponse<{ accessToken: string; user: UserDto }>
+        >({ cmd: 'auth_signin' }, dto),
       );
     } catch (error) {
-      this.handleAuthError(error);
+      handleRpcError(error);
     }
   }
 
-  @ApiOperation({ summary: 'Verify email' })
-  @ApiQuery({ name: 'token' })
+  @ApiOperation({ summary: 'Verify email with token' })
+  @ApiQuery({ name: 'token', description: 'Verification token from email' })
   @Get('verify-email')
   async verifyEmail(@Query('token') token: string) {
     try {
       return await firstValueFrom(
-        this.identityClient.send<any>({ cmd: 'auth_verify_email' }, token),
+        this.identityClient.send<
+          BaseResponse<{ email: string; alreadyVerified: boolean }>
+        >({ cmd: 'auth_verify_email' }, token),
       );
     } catch (error) {
-      this.handleAuthError(error);
+      handleRpcError(error);
     }
   }
 
@@ -93,87 +91,116 @@ export class AuthController {
   async resendVerification(@Body('email') email: string) {
     try {
       return await firstValueFrom(
-        this.identityClient.send<any>(
+        this.identityClient.send<BaseResponse<null>>(
           { cmd: 'auth_resend_verification' },
           email,
         ),
       );
     } catch (error) {
-      this.handleAuthError(error);
+      handleRpcError(error);
     }
   }
 
-  @ApiOperation({ summary: 'Forgot password' })
+  @ApiOperation({ summary: 'Request password reset - sends reset email' })
   @Post('forgot-password')
   async forgotPassword(@Body() dto: ForgotPasswordDto) {
     try {
       return await firstValueFrom(
-        this.identityClient.send<any>(
+        this.identityClient.send<BaseResponse<null>>(
           { cmd: 'auth_forgot_password' },
           dto.email,
         ),
       );
     } catch (error) {
-      this.handleAuthError(error);
+      handleRpcError(error);
     }
   }
 
-  @ApiOperation({ summary: 'Reset password' })
+  @ApiOperation({ summary: 'Reset password with token' })
   @Post('reset-password')
   async resetPassword(@Body() dto: ResetPasswordDto) {
     try {
       return await firstValueFrom(
-        this.identityClient.send<any>({ cmd: 'auth_reset_password' }, dto),
+        this.identityClient.send<BaseResponse<null>>(
+          { cmd: 'auth_reset_password' },
+          dto,
+        ),
       );
     } catch (error) {
-      this.handleAuthError(error);
+      handleRpcError(error);
     }
   }
 
-  @ApiOperation({ summary: 'Google Login' })
+  @ApiOperation({ summary: 'Initiate Google OAuth login' })
   @Get('google')
   @UseGuards(GoogleAuthGuard)
-  async googleAuth() {}
+  googleAuth(): void {
+    return;
+  }
 
+  @ApiOperation({ summary: 'Google OAuth callback' })
   @Get('google/callback')
   @UseGuards(GoogleAuthGuard)
   async googleAuthCallback(
     @Req() req: RequestWithGoogleUser,
     @Res() res: Response,
   ) {
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     try {
-      const tokenData = await firstValueFrom(
-        this.identityClient.send<any>({ cmd: 'auth_google_login' }, req.user),
+      const response = await firstValueFrom(
+        this.identityClient.send<
+          BaseResponse<{ accessToken: string; user: UserDto }>
+        >({ cmd: 'auth_google_login' }, req.user),
       );
 
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-      res.redirect(
-        `${frontendUrl}/auth-success?token=${tokenData.accessToken}`,
-      );
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      const token =
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        (response as any).accessToken ||
+        (response.data && response.data.accessToken);
+
+      return res.redirect(`${frontendUrl}/auth-success?token=${token}`);
     } catch (error) {
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-      res.redirect(`${frontendUrl}/login?error=auth_failed`);
+      console.error('Google callback error:', error);
+      return res.redirect(`${frontendUrl}/login?error=auth_failed`);
     }
   }
 
-  @ApiOperation({ summary: 'Get current profile' })
+  @ApiOperation({ summary: 'Get current user info' })
   @Get('me')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')
   async getCurrentUser(@Req() req: RequestWithUser) {
     try {
       return await firstValueFrom(
-        this.identityClient.send<any>(
+        this.identityClient.send<BaseResponse<UserDto>>(
           { cmd: 'auth_get_user_by_id' },
           req.user.userId,
         ),
       );
     } catch (error) {
-      this.handleAuthError(error);
+      handleRpcError(error);
     }
   }
 
-  @ApiOperation({ summary: 'Update profile' })
+  @ApiOperation({ summary: 'Get user profile' })
+  @Get('profile')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  async getProfile(@Req() req: RequestWithUser) {
+    try {
+      return await firstValueFrom(
+        this.identityClient.send<BaseResponse<UserDto>>(
+          { cmd: 'auth_get_user_by_id' },
+          req.user.userId,
+        ),
+      );
+    } catch (error) {
+      handleRpcError(error);
+    }
+  }
+
+  @ApiOperation({ summary: 'Update user profile' })
   @Patch('profile')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')
@@ -183,13 +210,13 @@ export class AuthController {
   ) {
     try {
       return await firstValueFrom(
-        this.identityClient.send<any>(
+        this.identityClient.send<BaseResponse<UserDto>>(
           { cmd: 'auth_update_profile' },
           { userId: req.user.userId, dto },
         ),
       );
     } catch (error) {
-      this.handleAuthError(error);
+      handleRpcError(error);
     }
   }
 }

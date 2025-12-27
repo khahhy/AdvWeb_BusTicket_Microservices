@@ -10,18 +10,34 @@ import {
   UseGuards,
   Req,
   Query,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard, Roles } from '@app/shared';
-import { RolesGuard } from '@app/shared/guards';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiBody,
+  ApiResponse,
+  ApiParam,
+} from '@nestjs/swagger';
+import { firstValueFrom } from 'rxjs';
 import {
   CreateLocationDto,
   UpdateLocationDto,
   QueryLocationDto,
+  LocationDto,
 } from '@app/shared/dto';
-import { UserRole } from '@app/shared/enums';
-import type { RequestWithUser } from '@app/shared/type';
+import {
+  UserRole,
+  JwtAuthGuard,
+  RolesGuard,
+  Roles,
+  BaseResponse,
+  handleRpcError,
+  type RequestWithUser,
+} from '@app/shared';
 
 @ApiTags('locations')
 @Controller('locations')
@@ -34,74 +50,168 @@ export class LocationsController {
   @Roles(UserRole.admin)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Create a new location' })
+  @ApiBody({ type: CreateLocationDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Location created successfully.',
+    type: LocationDto,
+  })
   @Post()
-  create(
+  @HttpCode(HttpStatus.CREATED)
+  async create(
     @Body() createLocationDto: CreateLocationDto,
     @Req() req: RequestWithUser,
   ) {
-    return this.tripClient.send(
-      { cmd: 'create_location' },
-      {
-        dto: createLocationDto,
-        userId: req.user.userId,
-        ip: req.ip,
-        userAgent: req.headers['user-agent'],
-      },
-    );
+    try {
+      return await firstValueFrom(
+        this.tripClient.send<BaseResponse<LocationDto>>(
+          { cmd: 'create_location' },
+          {
+            dto: createLocationDto,
+            userId: req.user.userId,
+            ip: req.ip,
+            userAgent: req.headers['user-agent'],
+          },
+        ),
+      );
+    } catch (e) {
+      handleRpcError(e);
+    }
   }
 
   @ApiOperation({ summary: 'Get all locations' })
+  @ApiResponse({
+    status: 200,
+    description: 'Fetched all locations successfully.',
+    type: [LocationDto],
+  })
   @Get()
-  findAll(@Query() query: QueryLocationDto) {
-    return this.tripClient.send({ cmd: 'get_locations' }, query);
+  async findAll(@Query() query: QueryLocationDto) {
+    try {
+      return await firstValueFrom(
+        this.tripClient.send<BaseResponse<any>>(
+          { cmd: 'get_locations' },
+          query,
+        ),
+      );
+    } catch (e) {
+      handleRpcError(e);
+    }
   }
 
-  @ApiOperation({ summary: 'Get distinct list of cities' })
+  @ApiOperation({
+    summary: 'Get distinct list of cities, for example: Hà Nội, Đà Lạt',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Fetched list of cities successfully.',
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Fetched list of cities successfully',
+        data: ['Hà Nội', 'Đà Lạt'],
+      },
+    },
+  })
   @Get('cities')
-  getCities() {
-    return this.tripClient.send({ cmd: 'get_location_cities' }, {});
+  async getCities() {
+    try {
+      return await firstValueFrom(
+        this.tripClient.send<BaseResponse<string[]>>(
+          { cmd: 'get_location_cities' },
+          {},
+        ),
+      );
+    } catch (e) {
+      handleRpcError(e);
+    }
   }
 
-  @ApiOperation({ summary: 'Get location details' })
+  @ApiOperation({ summary: 'Get a location by ID' })
+  @ApiParam({ name: 'id', description: 'Location ID', type: String })
+  @ApiResponse({
+    status: 200,
+    description: 'Fetched location successfully.',
+    type: LocationDto,
+  })
+  @ApiResponse({ status: 404, description: 'Location not found.' })
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.tripClient.send({ cmd: 'get_location_detail' }, id);
+  async findOne(@Param('id') id: string) {
+    try {
+      return await firstValueFrom(
+        this.tripClient.send<BaseResponse<LocationDto>>(
+          { cmd: 'get_location_detail' },
+          id,
+        ),
+      );
+    } catch (e) {
+      handleRpcError(e);
+    }
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.admin)
   @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Update a location' })
+  @ApiParam({ name: 'id', description: 'Location ID', type: String })
+  @ApiBody({ type: UpdateLocationDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Location updated successfully.',
+    type: LocationDto,
+  })
+  @ApiResponse({ status: 404, description: 'Location not found.' })
   @Patch(':id')
-  update(
+  async update(
     @Param('id') id: string,
     @Body() updateLocationDto: UpdateLocationDto,
     @Req() req: RequestWithUser,
   ) {
-    return this.tripClient.send(
-      { cmd: 'update_location' },
-      {
-        id,
-        dto: updateLocationDto,
-        userId: req.user.userId,
-        ip: req.ip,
-        userAgent: req.headers['user-agent'],
-      },
-    );
+    try {
+      return await firstValueFrom(
+        this.tripClient.send<BaseResponse<LocationDto>>(
+          { cmd: 'update_location' },
+          {
+            id,
+            dto: updateLocationDto,
+            userId: req.user.userId,
+            ip: req.ip,
+            userAgent: req.headers['user-agent'],
+          },
+        ),
+      );
+    } catch (e) {
+      handleRpcError(e);
+    }
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.admin)
   @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Delete a location' })
+  @ApiParam({ name: 'id', description: 'Location ID', type: String })
+  @ApiResponse({
+    status: 200,
+    description: 'Location deleted successfully.',
+    type: LocationDto,
+  })
+  @ApiResponse({ status: 404, description: 'Location not found.' })
   @Delete(':id')
-  remove(@Param('id') id: string, @Req() req: RequestWithUser) {
-    return this.tripClient.send(
-      { cmd: 'delete_location' },
-      {
-        id,
-        userId: req.user.userId,
-        ip: req.ip,
-        userAgent: req.headers['user-agent'],
-      },
-    );
+  async remove(@Param('id') id: string, @Req() req: RequestWithUser) {
+    try {
+      return await firstValueFrom(
+        this.tripClient.send<BaseResponse<LocationDto>>(
+          { cmd: 'delete_location' },
+          {
+            id,
+            userId: req.user.userId,
+            ip: req.ip,
+            userAgent: req.headers['user-agent'],
+          },
+        ),
+      );
+    } catch (e) {
+      handleRpcError(e);
+    }
   }
 }

@@ -7,6 +7,7 @@ import {
   ResetPasswordDto,
   UpdateProfileDto,
 } from '@app/shared/dto';
+import type { GoogleUserPayload } from '@app/shared';
 
 @Controller()
 export class AuthController {
@@ -43,7 +44,7 @@ export class AuthController {
   }
 
   @MessagePattern({ cmd: 'auth_google_login' })
-  async googleLogin(@Payload() user: any) {
+  async googleLogin(@Payload() user: GoogleUserPayload) {
     return this.authService.googleLogin(user);
   }
 

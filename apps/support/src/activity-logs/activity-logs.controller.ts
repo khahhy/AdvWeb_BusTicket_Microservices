@@ -21,4 +21,14 @@ export class ActivityLogsController {
   async findByUser(@Payload() userId: string) {
     return this.activityLogsService.findByUser(userId);
   }
+
+  @MessagePattern({ cmd: 'get_logs_by_entity' })
+  async findByEntity(
+    @Payload() data: { entityId: string; entityType: string },
+  ) {
+    return this.activityLogsService.findByEntity(
+      data.entityId,
+      data.entityType,
+    );
+  }
 }

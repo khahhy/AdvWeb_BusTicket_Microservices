@@ -5,6 +5,7 @@ import {
   CreateUserDto,
   UpdateUserDto,
   UpdateRoleDto,
+  UpdateStatusDto,
   QueryUserDto,
 } from '@app/shared/dto';
 
@@ -52,19 +53,74 @@ export class UserController {
 
   @MessagePattern({ cmd: 'user_update_role' })
   async updateRole(
-    @Payload() data: { id: string; dto: UpdateRoleDto; userId: string },
+    @Payload()
+    data: {
+      id: string;
+      dto: UpdateRoleDto;
+      userId: string;
+      ip: string;
+      userAgent: string;
+    },
   ) {
     return this.userService.updateRole(
       data.id,
       data.dto,
       data.userId,
-      'unknown',
-      'unknown',
+      data.ip,
+      data.userAgent,
+    );
+  }
+
+  @MessagePattern({ cmd: 'user_update_status' })
+  async updateStatus(
+    @Payload()
+    data: {
+      id: string;
+      dto: UpdateStatusDto;
+      userId: string;
+      ip: string;
+      userAgent: string;
+    },
+  ) {
+    return this.userService.updateStatus(
+      data.id,
+      data.dto,
+      data.userId,
+      data.ip,
+      data.userAgent,
     );
   }
 
   @MessagePattern({ cmd: 'user_remove' })
-  async remove(@Payload() data: { id: string; userId: string }) {
-    return this.userService.remove(data.id, data.userId, 'unknown', 'unknown');
+  async remove(
+    @Payload()
+    data: {
+      id: string;
+      userId: string;
+      ip: string;
+      userAgent: string;
+    },
+  ) {
+    return this.userService.remove(
+      data.id,
+      data.userId,
+      data.ip,
+      data.userAgent,
+    );
+  }
+
+  @MessagePattern({ cmd: 'user_get_notification_preferences' })
+  async getNotificationPreferences(@Payload() userId: string) {
+    return this.userService.getNotificationPreferences(userId);
+  }
+
+  @MessagePattern({ cmd: 'user_update_notification_preferences' })
+  async updateNotificationPreferences(
+    @Payload() data: { userId: string; preferences: any },
+  ) {
+    return this.userService.updateNotificationPreferences(
+      data.userId,
+      data.preferences,
+    );
   }
 }

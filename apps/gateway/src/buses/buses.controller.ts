@@ -10,14 +10,35 @@ import {
   UseGuards,
   Req,
   Query,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
-import { JwtAuthGuard, Roles } from '@app/shared';
-import { RolesGuard } from '@app/shared/guards';
-import { CreateBusDto, UpdateBusDto, QueryBusesDto } from '@app/shared/dto';
-import { UserRole } from '@app/shared/enums';
-import type { RequestWithUser } from '@app/shared/type';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiBody,
+  ApiResponse,
+  ApiParam,
+} from '@nestjs/swagger';
+import { firstValueFrom } from 'rxjs';
+import {
+  CreateBusDto,
+  UpdateBusDto,
+  QueryBusesDto,
+  BusDto,
+  SeatDto,
+} from '@app/shared/dto';
+import {
+  UserRole,
+  JwtAuthGuard,
+  RolesGuard,
+  Roles,
+  BaseResponse,
+  handleRpcError,
+  type RequestWithUser,
+} from '@app/shared';
 
 @ApiTags('Buses')
 @Controller('buses')
@@ -29,76 +50,161 @@ export class BusesController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.admin)
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Create a new bus (Admin)' })
+  @ApiOperation({ summary: 'Create a new bus and generate its seats (Admin)' })
   @ApiBody({ type: CreateBusDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Bus created successfully.',
+    type: BusDto,
+  })
+  @ApiResponse({ status: 400, description: 'Plate already exists.' })
   @Post()
-  create(@Body() createBusDto: CreateBusDto, @Req() req: RequestWithUser) {
-    return this.tripClient.send(
-      { cmd: 'create_bus' },
-      {
-        dto: createBusDto,
-        userId: req.user.userId,
-        ip: req.ip,
-        userAgent: req.headers['user-agent'],
-      },
-    );
+  @HttpCode(HttpStatus.CREATED)
+  async create(
+    @Body() createBusDto: CreateBusDto,
+    @Req() req: RequestWithUser,
+  ) {
+    try {
+      return await firstValueFrom(
+        this.tripClient.send<BaseResponse<BusDto>>(
+          { cmd: 'create_bus' },
+          {
+            dto: createBusDto,
+            userId: req.user.userId,
+            ip: req.ip,
+            userAgent: req.headers['user-agent'],
+          },
+        ),
+      );
+    } catch (e) {
+      handleRpcError(e);
+    }
   }
 
-  @ApiOperation({ summary: 'Get all buses (Public)' })
+  @ApiOperation({ summary: 'Get all buses with optional filtering' })
+  @ApiResponse({
+    status: 200,
+    description: 'Fetched all buses successfully.',
+    type: [BusDto],
+  })
   @Get()
-  findAll(@Query() query: QueryBusesDto) {
-    return this.tripClient.send({ cmd: 'find_all_buses' }, query);
+  async findAll(@Query() query: QueryBusesDto) {
+    try {
+      return await firstValueFrom(
+        this.tripClient.send<BaseResponse<BusDto[]>>(
+          { cmd: 'find_all_buses' },
+          query,
+        ),
+      );
+    } catch (e) {
+      handleRpcError(e);
+    }
   }
 
-  @ApiOperation({ summary: 'Get bus details (Public)' })
+  @ApiOperation({ summary: 'Get a specific bus by ID' })
+  @ApiParam({ name: 'id', description: 'Bus ID', type: String })
+  @ApiResponse({
+    status: 200,
+    description: 'Fetched bus details successfully.',
+    type: BusDto,
+  })
+  @ApiResponse({ status: 404, description: 'Bus not found.' })
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.tripClient.send({ cmd: 'find_one_bus' }, id);
+  async findOne(@Param('id') id: string) {
+    try {
+      return await firstValueFrom(
+        this.tripClient.send<BaseResponse<BusDto>>({ cmd: 'find_one_bus' }, id),
+      );
+    } catch (e) {
+      handleRpcError(e);
+    }
   }
 
-  @ApiOperation({ summary: 'Get seats of a bus (Public)' })
+  @ApiOperation({ summary: 'Get all seats for a specific bus' })
+  @ApiParam({ name: 'id', description: 'Bus ID', type: String })
+  @ApiResponse({
+    status: 200,
+    description: 'Fetched seats successfully.',
+    type: [SeatDto],
+  })
+  @ApiResponse({ status: 404, description: 'Bus not found.' })
   @Get(':id/seats')
-  getSeats(@Param('id') id: string) {
-    return this.tripClient.send({ cmd: 'get_bus_seats' }, id);
+  async getSeats(@Param('id') id: string) {
+    try {
+      return await firstValueFrom(
+        this.tripClient.send<BaseResponse<SeatDto[]>>(
+          { cmd: 'get_bus_seats' },
+          id,
+        ),
+      );
+    } catch (e) {
+      handleRpcError(e);
+    }
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.admin)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Update bus info (Admin)' })
+  @ApiParam({ name: 'id', description: 'Bus ID', type: String })
   @ApiBody({ type: UpdateBusDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Bus updated successfully.',
+    type: BusDto,
+  })
+  @ApiResponse({ status: 404, description: 'Bus not found.' })
   @Patch(':id')
-  update(
+  async update(
     @Param('id') id: string,
     @Body() updateBusDto: UpdateBusDto,
     @Req() req: RequestWithUser,
   ) {
-    return this.tripClient.send(
-      { cmd: 'update_bus' },
-      {
-        id,
-        dto: updateBusDto,
-        userId: req.user.userId,
-        ip: req.ip,
-        userAgent: req.headers['user-agent'],
-      },
-    );
+    try {
+      return await firstValueFrom(
+        this.tripClient.send<BaseResponse<BusDto>>(
+          { cmd: 'update_bus' },
+          {
+            id,
+            dto: updateBusDto,
+            userId: req.user.userId,
+            ip: req.ip,
+            userAgent: req.headers['user-agent'],
+          },
+        ),
+      );
+    } catch (e) {
+      handleRpcError(e);
+    }
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.admin)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Delete bus (Admin)' })
+  @ApiParam({ name: 'id', description: 'Bus ID', type: String })
+  @ApiResponse({
+    status: 200,
+    description: 'Bus deleted successfully.',
+    type: BusDto,
+  })
+  @ApiResponse({ status: 404, description: 'Bus not found.' })
   @Delete(':id')
-  remove(@Param('id') id: string, @Req() req: RequestWithUser) {
-    return this.tripClient.send(
-      { cmd: 'delete_bus' },
-      {
-        id,
-        userId: req.user.userId,
-        ip: req.ip,
-        userAgent: req.headers['user-agent'],
-      },
-    );
+  async remove(@Param('id') id: string, @Req() req: RequestWithUser) {
+    try {
+      return await firstValueFrom(
+        this.tripClient.send<BaseResponse<BusDto>>(
+          { cmd: 'delete_bus' },
+          {
+            id,
+            userId: req.user.userId,
+            ip: req.ip,
+            userAgent: req.headers['user-agent'],
+          },
+        ),
+      );
+    } catch (e) {
+      handleRpcError(e);
+    }
   }
 }

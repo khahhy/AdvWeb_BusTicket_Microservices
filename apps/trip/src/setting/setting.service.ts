@@ -17,6 +17,7 @@ import {
   BusTypePricingDto,
   PricingPoliciesDto,
 } from '@app/shared/dto';
+import { lastValueFrom } from 'rxjs';
 
 export type SettingsValueDto =
   | GeneralSettingsDto
@@ -115,19 +116,25 @@ export class SettingService {
 
         await this.cacheManager.delByPattern('trip-route-map:search:*');
       }
-      this.supportClient.emit('log_activity', {
-        userId: userId,
-        action: 'UPSERT_SETTING',
-        entityType: 'Settings',
-        metadata: {
-          key: key,
-          update: {
-            value: jsonValue,
-          },
-        },
-        ipAddress: ip,
-        userAgent: userAgent,
-      });
+      try {
+        await lastValueFrom(
+          this.supportClient.emit('log_activity', {
+            userId: userId,
+            action: 'UPSERT_SETTING',
+            entityType: 'Settings',
+            metadata: {
+              key: key,
+              update: {
+                value: jsonValue,
+              },
+            },
+            ipAddress: ip,
+            userAgent: userAgent,
+          }),
+        );
+      } catch (logError) {
+        console.error('Failed to emit log_activity:', logError);
+      }
 
       return { message: 'Settings saved successfully', data: result.value };
     } catch (err) {

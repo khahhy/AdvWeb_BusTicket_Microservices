@@ -14,6 +14,7 @@ import { hash, compare } from 'bcrypt';
 import { randomBytes } from 'crypto';
 import type { GoogleUserPayload } from '@app/shared';
 import { ClientProxy } from '@nestjs/microservices';
+import { lastValueFrom } from 'rxjs';
 
 @Injectable()
 export class AuthService {
@@ -61,10 +62,16 @@ export class AuthService {
     });
 
     // Send verification email
-    this.supportClient.emit('user_created', {
-      email: user.email,
-      verifyToken: verificationToken,
-    });
+    try {
+      await lastValueFrom(
+        this.supportClient.emit('user_created', {
+          email: user.email,
+          verifyToken: verificationToken,
+        }),
+      );
+    } catch (error) {
+      console.error('Error emitting user_created event:', error);
+    }
 
     return {
       message:
@@ -167,10 +174,16 @@ export class AuthService {
     });
 
     // Send verification email
-    this.supportClient.emit('user_created', {
-      email: user.email,
-      verifyToken: verificationToken,
-    });
+    try {
+      await lastValueFrom(
+        this.supportClient.emit('user_created', {
+          email: user.email,
+          verifyToken: verificationToken,
+        }),
+      );
+    } catch (error) {
+      console.error('Error emitting verification event:', error);
+    }
 
     return {
       message: 'Verification email sent successfully. Please check your inbox.',
@@ -274,10 +287,16 @@ export class AuthService {
     });
 
     // Send password reset email
-    this.supportClient.emit('forgot_password', {
-      email: user.email,
-      resetToken: resetToken,
-    });
+    try {
+      await lastValueFrom(
+        this.supportClient.emit('forgot_password', {
+          email: user.email,
+          resetToken: resetToken,
+        }),
+      );
+    } catch (error) {
+      console.error('Error emitting forgot_password event:', error);
+    }
 
     return {
       message:
