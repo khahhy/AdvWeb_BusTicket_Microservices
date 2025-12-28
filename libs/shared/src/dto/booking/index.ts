@@ -3,3 +3,7 @@ export * from './customer-info.dto';
 export * from './lookup-booking.dto';
 export * from './modify-booking.dto';
 export * from './query-booking.dto';
+export * from './booking-analytics.dto';
+export * from './booking-request.dto';
+export * from './booking.dto';
+export * from './eticket.dto';

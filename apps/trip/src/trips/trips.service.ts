@@ -1109,4 +1109,31 @@ export class TripsService {
   //     });
   //   }
   // }
+
+  findOneSeat(seatId: string) {
+    return this.prisma.seats.findUnique({
+      where: { id: seatId },
+    });
+  }
+
+  async findRecentWithCapacity(days = 30) {
+    const from = new Date();
+    from.setDate(from.getDate() - days);
+
+    const trips = await this.prisma.trips.findMany({
+      where: { startTime: { gte: from } },
+      select: {
+        id: true,
+        bus: { select: { _count: { select: { seats: true } } } },
+      },
+    });
+
+    return {
+      message: 'Fetched trips capacity successfully',
+      data: trips.map((t) => ({
+        id: t.id,
+        seatCount: t.bus?._count?.seats ?? 0,
+      })),
+    };
+  }
 }

@@ -6,3 +6,4 @@ export * from './update-trip-status.dto';
 export * from './update-trip.dto';
 export * from './trip.dto';
 export * from './seat-status.dto';
+export * from './trip-capacity.dto';

@@ -511,4 +511,22 @@ export class UserService {
       );
     }
   }
+
+  async getContactForNotifications(userId: string) {
+    const user = await this.prisma.users.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        phoneNumber: true,
+        notificationPreferences: true,
+        status: true,
+        role: true,
+      },
+    });
+
+    if (!user) throw new NotFoundException('User not found');
+    return { message: 'Fetched user contact successfully', data: user };
+  }
 }

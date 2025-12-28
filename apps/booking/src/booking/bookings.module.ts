@@ -4,6 +4,7 @@ import { BookingsService } from './bookings.service';
 import { BookingsController } from './bookings.controller';
 import { BookingsGateway } from './bookings.gateway';
 import { ETicketModule } from '../eticket/eticket.module';
+import { ETicketController } from '../eticket/eticket.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
@@ -11,6 +12,14 @@ import { PrismaModule } from '../prisma/prisma.module';
     PrismaModule,
     ETicketModule,
     ClientsModule.register([
+      {
+        name: 'IDENTITY_SERVICE',
+        transport: Transport.TCP,
+        options: {
+          host: process.env.IDENTITY_SERVICE_HOST || 'localhost',
+          port: Number(process.env.IDENTITY_SERVICE_PORT) || 3001,
+        },
+      },
       {
         name: 'TRIP_SERVICE',
         transport: Transport.TCP,
@@ -29,7 +38,7 @@ import { PrismaModule } from '../prisma/prisma.module';
       },
     ]),
   ],
-  controllers: [BookingsController],
+  controllers: [BookingsController, ETicketController],
   providers: [BookingsService, BookingsGateway],
   exports: [BookingsService],
 })

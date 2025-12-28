@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { ETicketService } from './eticket.service';
+import { ETicketController } from './eticket.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
@@ -17,6 +18,7 @@ import { PrismaModule } from '../prisma/prisma.module';
       },
     ]),
   ],
+  controllers: [ETicketController],
   providers: [ETicketService],
   exports: [ETicketService],
 })

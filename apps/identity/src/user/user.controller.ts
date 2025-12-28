@@ -123,4 +123,9 @@ export class UserController {
       data.preferences,
     );
   }
+
+  @MessagePattern({ cmd: 'user_get_contact_for_notifications' })
+  async getContactForNotifications(@Payload() userId: string) {
+    return this.userService.getContactForNotifications(userId);
+  }
 }

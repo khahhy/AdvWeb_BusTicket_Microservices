@@ -115,4 +115,14 @@ export class TripsController {
   // ) {
   //   return this.tripsService.getSeatsStatus(payload.tripId, payload.routeId);
   // }
+
+  @MessagePattern({ cmd: 'find_one_seat' })
+  findOneSeat(@Payload() seatId: string) {
+    return this.tripsService.findOneSeat(seatId);
+  }
+
+  @MessagePattern({ cmd: 'trips_find_recent_with_capacity' })
+  findRecentWithCapacity(@Payload() payload: { days?: number }) {
+    return this.tripsService.findRecentWithCapacity(payload?.days ?? 30);
+  }
 }
