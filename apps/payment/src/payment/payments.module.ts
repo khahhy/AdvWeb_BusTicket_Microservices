@@ -14,6 +14,14 @@ import { PayOSModule } from '../payos/payos.module';
     PayOSModule,
     ClientsModule.register([
       {
+        name: 'IDENTITY_SERVICE',
+        transport: Transport.TCP,
+        options: {
+          host: process.env.IDENTITY_SERVICE_HOST || 'localhost',
+          port: Number(process.env.IDENTITY_SERVICE_PORT) || 3001,
+        },
+      },
+      {
         name: 'BOOKING_SERVICE',
         transport: Transport.TCP,
         options: {
@@ -26,7 +34,15 @@ import { PayOSModule } from '../payos/payos.module';
         transport: Transport.TCP,
         options: {
           host: process.env.SUPPORT_SERVICE_HOST || 'localhost',
-          port: Number(process.env.SUPPORT_SERVICE_PORT) || 3003,
+          port: Number(process.env.SUPPORT_SERVICE_PORT) || 3002,
+        },
+      },
+      {
+        name: 'TRIP_SERVICE',
+        transport: Transport.TCP,
+        options: {
+          host: process.env.TRIP_SERVICE_HOST || 'localhost',
+          port: Number(process.env.TRIP_SERVICE_PORT) || 3003,
         },
       },
     ]),

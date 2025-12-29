@@ -25,6 +25,7 @@ export class UserService {
   constructor(
     private readonly prisma: PrismaService,
     @Inject('SUPPORT_SERVICE') private readonly supportClient: ClientProxy,
+    @Inject('BOOKING_SERVICE') private readonly bookingClient: ClientProxy,
     private readonly cacheManager: RedisCacheService,
   ) {}
 
@@ -371,39 +372,33 @@ export class UserService {
         },
       });
 
-      // Active Users (made a booking)
-      // const activeUsersThisMonth = await this.prisma.users.count({
-      //   where: {
-      //     ...userFilter,
-      //     bookings: {
-      //       some: {
-      //         createdAt: { gte: startOfThisMonth },
-      //       },
-      //     },
-      //   },
-      // });
-
-      // const activeUsersLastMonth = await this.prisma.users.count({
-      //   where: {
-      //     ...userFilter,
-      //     bookings: {
-      //       some: {
-      //         createdAt: {
-      //           gte: startOfLastMonth,
-      //           lt: startOfThisMonth,
-      //         },
-      //       },
-      //     },
-      //   },
-      // });
-
       const calculateGrowth = (current: number, previous: number) => {
         if (previous === 0) return current > 0 ? 100 : 0;
         return Number((((current - previous) / previous) * 100).toFixed(2));
       };
 
-      const activeUsersThisMonth = 0;
-      const activeUsersLastMonth = 0;
+      const activeThisMonthRes = await lastValueFrom(
+        this.bookingClient.send<{ message: string; data: { count: number } }>(
+          { cmd: 'booking_count_active_users' },
+          {
+            dateFrom: startOfThisMonth.toISOString(),
+            dateTo: now.toISOString(),
+          },
+        ),
+      );
+
+      const activeLastMonthRes = await lastValueFrom(
+        this.bookingClient.send<{ message: string; data: { count: number } }>(
+          { cmd: 'booking_count_active_users' },
+          {
+            dateFrom: startOfLastMonth.toISOString(),
+            dateTo: new Date(startOfThisMonth.getTime() - 1).toISOString(),
+          },
+        ),
+      );
+
+      const activeUsersThisMonth = activeThisMonthRes?.data?.count ?? 0;
+      const activeUsersLastMonth = activeLastMonthRes?.data?.count ?? 0;
 
       const resultData = {
         total: {

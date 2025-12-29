@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from './prisma/prisma.module';
 import { ETicketModule } from './eticket/eticket.module';
 import { BookingsModule } from './booking/bookings.module';
+import { RedisCacheModule } from '@app/shared';
 
 @Module({
   imports: [
@@ -11,6 +12,7 @@ import { BookingsModule } from './booking/bookings.module';
       envFilePath: ['.env', 'apps/booking/.env'],
     }),
     PrismaModule,
+    RedisCacheModule,
     ETicketModule,
     BookingsModule,
   ],

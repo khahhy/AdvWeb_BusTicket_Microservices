@@ -24,6 +24,8 @@ import {
   UserContactDto,
   TripRouteDto,
   TripCapacityDto,
+  SeatStatusBookedSeatIdsDto,
+  SeatStatusRequestDto,
 } from '@app/shared/dto';
 import { BaseResponse } from '@app/shared';
 import { Prisma } from '@prisma/client-booking';
@@ -343,24 +345,20 @@ export class BookingsService {
             const ticketCode = await this.generateUniqueTicketCode();
 
             // Build booking data with proper relation connections
-            const bookingCreateInput: Prisma.BookingsCreateInput = {
+            const bookingCreateInput: Prisma.BookingsUncheckedCreateInput = {
               userId: userId ?? null,
               tripId,
               routeId,
               seatId: currentSeatId,
               pickupStopId,
               dropoffStopId,
-              customerInfo: customerInfo as unknown as Prisma.InputJsonValue,
+              customerInfo: {
+                ...customerInfo,
+              } as Prisma.InputJsonValue,
               price: routePrice,
               status: BookingStatus.pendingPayment,
               ticketCode,
             };
-
-            if (userId) {
-              Object.assign(bookingCreateInput, {
-                user: { connect: { id: userId } },
-              });
-            }
 
             const booking = await tx.bookings.create({
               data: bookingCreateInput,
@@ -488,7 +486,19 @@ export class BookingsService {
               busType: trip?.bus?.busType,
             },
           },
-          route: { name: route?.name },
+          route: {
+            name: route?.name,
+            origin: {
+              id: route?.origin?.id,
+              name: route?.origin?.name,
+              city: route?.origin?.city,
+            },
+            destination: {
+              id: route?.destination?.id,
+              name: route?.destination?.name,
+              city: route?.destination?.city,
+            },
+          },
           seat: { seatNumber: seat?.seatNumber },
           pickupStop: pickupStop
             ? { id: pickupStop.id, location: pickupStop.location }
@@ -1363,7 +1373,7 @@ export class BookingsService {
               departureTime: ticketData.departureTime,
               seatNumber: ticketData.seatNumber,
             },
-            pdfBase64: pdfBuffer,
+            pdfBase64: Buffer.from(pdfBuffer).toString('base64'),
           }),
         );
       } catch (error) {
@@ -1437,7 +1447,7 @@ export class BookingsService {
     try {
       const bookingRuleRes = await lastValueFrom(
         this.tripClient.send<BaseResponse<unknown>>(
-          { cmd: 'system_settings_find_one' },
+          { cmd: 'get_setting' },
           { key: SettingKey.BOOKING_RULES },
         ),
       );
@@ -1507,5 +1517,219 @@ export class BookingsService {
     } catch (error) {
       this.logger.error('Error in automated booking expiration job:', error);
     }
+  }
+
+  async confirmMany(bookingIds: string[]) {
+    await this.prisma.bookings.updateMany({
+      where: { id: { in: bookingIds } },
+      data: { status: BookingStatus.confirmed },
+    });
+    return { message: 'Bookings confirmed', data: { bookingIds } };
+  }
+
+  async countActiveUsers(dateFrom?: string, dateTo?: string) {
+    const where: Prisma.BookingsWhereInput = {
+      status: { in: [BookingStatus.confirmed, BookingStatus.pendingPayment] },
+      ...(dateFrom || dateTo
+        ? {
+            createdAt: {
+              gte: dateFrom ? new Date(dateFrom) : undefined,
+              lte: dateTo
+                ? new Date(new Date(dateTo).setHours(23, 59, 59, 999))
+                : undefined,
+            },
+          }
+        : {}),
+      userId: { not: null },
+    };
+
+    // distinct userId
+    const rows = await this.prisma.bookings.findMany({
+      where,
+      distinct: ['userId'],
+      select: { userId: true },
+    });
+
+    return {
+      message: 'Counted active users successfully',
+      data: { count: rows.filter((x) => x.userId).length },
+    };
+  }
+
+  async upcomingForReminder(fromIso: string, toIso: string) {
+    const from = new Date(fromIso);
+    const to = new Date(toIso);
+
+    const tripsRes = await lastValueFrom(
+      this.tripClient.send<BaseResponse<{ id: string }[]>>(
+        { cmd: 'trips_find_by_start_time_range' },
+        { from: from.toISOString(), to: to.toISOString() },
+      ),
+    );
+
+    const tripIds = (tripsRes.data ?? []).map((t) => t.id);
+    if (tripIds.length === 0) {
+      return { message: 'No upcoming bookings', data: [] };
+    }
+
+    const bookings = await this.prisma.bookings.findMany({
+      where: {
+        status: BookingStatus.confirmed,
+        tripId: { in: tripIds },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const enriched = await Promise.all(
+      bookings.map(async (b) => {
+        const [tripRes, routeRes, seatRes, userRes] = await Promise.all([
+          lastValueFrom(
+            this.tripClient.send<BaseResponse<TripDto>>(
+              { cmd: 'get_trip_detail' },
+              { id: b.tripId, includeRoutes: false },
+            ),
+          ),
+          lastValueFrom(
+            this.tripClient.send<BaseResponse<RouteDto>>(
+              { cmd: 'find_one_route' },
+              b.routeId,
+            ),
+          ),
+          lastValueFrom(
+            this.tripClient.send<BaseResponse<SeatDto>>(
+              { cmd: 'find_one_seat' },
+              b.seatId,
+            ),
+          ),
+          b.userId
+            ? lastValueFrom(
+                this.identityClient.send<BaseResponse<UserContactDto>>(
+                  { cmd: 'user_get_contact_for_notifications' },
+                  b.userId,
+                ),
+              )
+            : Promise.resolve(null),
+        ]);
+
+        const trip = tripRes.data;
+        const route = routeRes.data;
+        const seat = seatRes.data;
+        const user = userRes?.data ?? null;
+
+        const pickupStop =
+          trip?.tripStops?.find((s) => s.id === b.pickupStopId) ?? null;
+        const dropoffStop =
+          trip?.tripStops?.find((s) => s.id === b.dropoffStopId) ?? null;
+
+        return {
+          ...b,
+          user: user
+            ? {
+                fullName: user.fullName,
+                email: user.email,
+                phoneNumber: user.phoneNumber,
+              }
+            : null,
+          trip: {
+            startTime: trip?.startTime,
+            bus: { plate: trip?.bus?.plate },
+          },
+          route: {
+            origin: { name: route?.origin?.name },
+            destination: { name: route?.destination?.name },
+          },
+          pickupStop: pickupStop ? { location: pickupStop.location } : null,
+          dropoffStop: dropoffStop ? { location: dropoffStop.location } : null,
+          seat: { seatNumber: seat?.seatNumber },
+          customerInfo: b.customerInfo,
+        };
+      }),
+    );
+
+    return {
+      message: 'Fetched upcoming bookings for reminder',
+      data: enriched,
+    };
+  }
+
+  async getTopRoutes(limit = 5) {
+    const topRoutesRaw = await this.prisma.bookings.groupBy({
+      by: ['routeId'],
+      where: { status: BookingStatus.confirmed },
+      _count: { id: true },
+      _sum: { price: true },
+      orderBy: { _count: { id: 'desc' } },
+      take: limit,
+    });
+
+    const data = topRoutesRaw.map((x) => ({
+      routeId: x.routeId,
+      totalBookings: x._count.id,
+      totalRevenue: Number(x._sum.price ?? 0),
+    }));
+
+    return { message: 'Fetched top routes stats successfully', data };
+  }
+
+  async countByTrip(tripId: string, statuses?: string[]) {
+    const count = await this.prisma.bookings.count({
+      where: {
+        tripId,
+        ...(statuses?.length
+          ? { status: { in: statuses as BookingStatus[] } }
+          : {}),
+      },
+    });
+
+    return {
+      message: 'Counted bookings by trip successfully',
+      data: { count },
+    };
+  }
+
+  async getBookedSeatIdsForSegments(p: SeatStatusRequestDto) {
+    const { tripId, routeId, segmentIds } = p;
+
+    const bookedSeatIds = new Set<string>();
+
+    // Redis locks
+    const lockPattern = `lock:trip:${tripId}:*`;
+    const activeLocks = await this.cacheManager.keys(lockPattern);
+
+    if (activeLocks?.length) {
+      for (const key of activeLocks) {
+        const parts = key.split(':');
+        const segId = parts[4];
+        const seatId = parts[6];
+        if (segmentIds.includes(segId)) bookedSeatIds.add(seatId);
+      }
+    }
+
+    // SeatSegmentLocks
+    if (segmentIds.length > 0) {
+      const lockedSeats = await this.prisma.seatSegmentLocks.findMany({
+        where: { tripId, segmentId: { in: segmentIds } },
+        select: { seatId: true },
+      });
+      lockedSeats.forEach((x) => bookedSeatIds.add(x.seatId));
+    }
+
+    // Bookings fallback (confirmed/pendingPayment)
+    const bookedFromBookings = await this.prisma.bookings.findMany({
+      where: {
+        tripId,
+        routeId,
+        status: { in: ['confirmed', 'pendingPayment'] },
+      },
+      select: { seatId: true },
+    });
+    bookedFromBookings.forEach((x) => bookedSeatIds.add(x.seatId));
+
+    return {
+      message: 'Fetched booked seat ids successfully',
+      data: {
+        bookedSeatIds: Array.from(bookedSeatIds),
+      } satisfies SeatStatusBookedSeatIdsDto,
+    };
   }
 }

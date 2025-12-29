@@ -1,4 +1,10 @@
-import { IsOptional, IsString, IsDateString } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsDateString,
+  IsISO8601,
+  IsNotEmpty,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 
@@ -58,4 +64,14 @@ export class SearchTripDto {
   @IsOptional()
   @IsString()
   includeRoutes?: string;
+}
+
+export class TripsFindByStartTimeRangeDto {
+  @IsISO8601()
+  @IsNotEmpty()
+  from!: string;
+
+  @IsISO8601()
+  @IsNotEmpty()
+  to!: string;
 }

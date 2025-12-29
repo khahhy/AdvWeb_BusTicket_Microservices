@@ -25,7 +25,7 @@ import { PrismaModule } from '../prisma/prisma.module';
         transport: Transport.TCP,
         options: {
           host: process.env.TRIP_SERVICE_HOST || 'localhost',
-          port: Number(process.env.TRIP_SERVICE_PORT) || 3002,
+          port: Number(process.env.TRIP_SERVICE_PORT) || 3003,
         },
       },
       {
@@ -33,7 +33,7 @@ import { PrismaModule } from '../prisma/prisma.module';
         transport: Transport.TCP,
         options: {
           host: process.env.SUPPORT_SERVICE_HOST || 'localhost',
-          port: Number(process.env.SUPPORT_SERVICE_PORT) || 3003,
+          port: Number(process.env.SUPPORT_SERVICE_PORT) || 3002,
         },
       },
     ]),

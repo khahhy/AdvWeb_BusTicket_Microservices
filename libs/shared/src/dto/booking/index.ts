@@ -7,3 +7,7 @@ export * from './booking-analytics.dto';
 export * from './booking-request.dto';
 export * from './booking.dto';
 export * from './eticket.dto';
+export * from './booking-reminder-item.dto';
+export * from './booking-upcoming-for-reminder.dto';
+export * from './booking-top-routes.dto';
+export * from './booking-count-by-trip.dto';

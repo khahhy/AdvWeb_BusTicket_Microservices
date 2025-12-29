@@ -50,16 +50,16 @@ export class BookingRouteLiteDto {
   @ApiProperty({
     required: false,
     description: 'Origin location (lite)',
-    example: { name: 'Bến xe Miền Đông', city: 'Hồ Chí Minh' },
+    example: { id: 'id', name: 'Bến xe Miền Đông', city: 'Hồ Chí Minh' },
   })
-  origin?: { name: string; city: string };
+  origin?: { id: string; name: string; city: string };
 
   @ApiProperty({
     required: false,
     description: 'Destination location (lite)',
-    example: { name: 'Bến xe Đà Lạt', city: 'Lâm Đồng' },
+    example: { id: 'id', name: 'Bến xe Đà Lạt', city: 'Lâm Đồng' },
   })
-  destination?: { name: string; city: string };
+  destination?: { id: string; name: string; city: string };
 }
 
 export class BookingSeatLiteDto {
@@ -189,4 +189,14 @@ export class BookingResponseDto {
 
   @ApiProperty({ type: BookingDto })
   data: BookingDto;
+}
+
+export class SeatStatusRequestDto {
+  tripId!: string;
+  routeId!: string;
+  segmentIds!: string[];
+}
+
+export class SeatStatusBookedSeatIdsDto {
+  bookedSeatIds!: string[];
 }

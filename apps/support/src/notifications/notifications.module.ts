@@ -20,6 +20,22 @@ import { EmailService } from '../email/email.service';
           port: 3001, // port Identity
         },
       },
+      {
+        name: 'SUPPORT_SERVICE',
+        transport: Transport.TCP,
+        options: {
+          host: 'localhost',
+          port: 3002, // port Identity
+        },
+      },
+      {
+        name: 'BOOKING_SERVICE',
+        transport: Transport.TCP,
+        options: {
+          host: 'localhost',
+          port: 3004,
+        },
+      },
     ]),
   ],
   controllers: [NotificationsController, SmsController],

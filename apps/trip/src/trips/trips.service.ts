@@ -14,6 +14,9 @@ import {
   TripQueryDto,
   SearchTripDto,
   UpdateTripDto,
+  SeatStatusBookedSeatIdsDto,
+  SeatStatusRequestDto,
+  TripsFindByStartTimeRangeDto,
 } from '@app/shared/dto';
 import { Prisma, Trips } from '@prisma/client-trip';
 import { TripStatus } from '@app/shared/enums';
@@ -25,10 +28,12 @@ export class TripsService {
     private readonly prisma: PrismaService,
     @Inject('SUPPORT_SERVICE') private readonly supportClient: ClientProxy,
     private readonly cacheManager: RedisCacheService,
+    @Inject('BOOKING_SERVICE') private readonly bookingClient: ClientProxy,
   ) {}
 
   private async clearTripCache(tripId?: string) {
     await this.cacheManager.delByPattern('trips:search*');
+    await this.cacheManager.delByPattern('routes:trips*');
 
     if (tripId) {
       await this.cacheManager.delByPattern(`trips:detail:${tripId}*`);
@@ -371,11 +376,20 @@ export class TripsService {
       throw new BadRequestException('Cannot update trip that is not scheduled');
     }
 
-    // if (trip.bookings.length > 0) {
-    //   throw new BadRequestException(
-    //     'Cannot update trip with existing bookings',
-    //   );
-    // }
+    const bookingCountRes = await lastValueFrom(
+      this.bookingClient.send<{ message: string; data: { count: number } }>(
+        { cmd: 'booking_count_by_trip' },
+        { tripId, statuses: ['confirmed', 'pendingPayment'] },
+      ),
+    );
+
+    const bookingCount = bookingCountRes?.data?.count ?? 0;
+
+    if (bookingCount > 0) {
+      throw new BadRequestException(
+        'Cannot update trip with existing bookings',
+      );
+    }
 
     const { busId, stops } = dto;
 
@@ -589,11 +603,20 @@ export class TripsService {
       throw new NotFoundException('Trip not found');
     }
 
-    // if (trip.bookings.length > 0) {
-    //   throw new BadRequestException(
-    //     'Cannot delete trip with existing bookings',
-    //   );
-    // }
+    const bookingCountRes = await lastValueFrom(
+      this.bookingClient.send<{ message: string; data: { count: number } }>(
+        { cmd: 'booking_count_by_trip' },
+        { tripId, statuses: ['confirmed', 'pendingPayment'] },
+      ),
+    );
+
+    const bookingCount = bookingCountRes?.data?.count ?? 0;
+
+    if (bookingCount > 0) {
+      throw new BadRequestException(
+        'Cannot delete trip with existing bookings',
+      );
+    }
 
     try {
       await lastValueFrom(
@@ -621,147 +644,120 @@ export class TripsService {
     });
   }
 
-  // async getSeatsStatus(tripId: string, routeId: string) {
-  //   try {
-  //     const trip = await this.prisma.trips.findUnique({
-  //       where: { id: tripId },
-  //       include: {
-  //         bus: {
-  //           include: {
-  //             seats: {
-  //               orderBy: { seatNumber: 'asc' },
-  //             },
-  //           },
-  //         },
-  //       },
-  //     });
+  async getSeatsStatus(tripId: string, routeId: string) {
+    try {
+      const trip = await this.prisma.trips.findUnique({
+        where: { id: tripId },
+        include: {
+          bus: {
+            include: {
+              seats: {
+                orderBy: { seatNumber: 'asc' },
+              },
+            },
+          },
+        },
+      });
 
-  //     if (!trip) throw new NotFoundException('Trip not found');
-  //     if (!trip.bus)
-  //       throw new NotFoundException('Bus assigned to trip not found');
+      if (!trip) throw new NotFoundException('Trip not found');
+      if (!trip.bus)
+        throw new NotFoundException('Bus assigned to trip not found');
 
-  //     const route = await this.prisma.routes.findUnique({
-  //       where: { id: routeId },
-  //       select: { originLocationId: true, destinationLocationId: true },
-  //     });
+      const route = await this.prisma.routes.findUnique({
+        where: { id: routeId },
+        select: { originLocationId: true, destinationLocationId: true },
+      });
 
-  //     if (!route) throw new NotFoundException('Route not found');
+      if (!route) throw new NotFoundException('Route not found');
 
-  //     const stops = await this.prisma.tripStops.findMany({
-  //       where: {
-  //         tripId,
-  //         locationId: {
-  //           in: [route.originLocationId, route.destinationLocationId],
-  //         },
-  //       },
-  //       select: { id: true, sequence: true, locationId: true },
-  //     });
+      const stops = await this.prisma.tripStops.findMany({
+        where: {
+          tripId,
+          locationId: {
+            in: [route.originLocationId, route.destinationLocationId],
+          },
+        },
+        select: { id: true, sequence: true, locationId: true },
+      });
 
-  //     const startStop = stops.find(
-  //       (s) => s.locationId === route.originLocationId,
-  //     );
-  //     const endStop = stops.find(
-  //       (s) => s.locationId === route.destinationLocationId,
-  //     );
+      const startStop = stops.find(
+        (s) => s.locationId === route.originLocationId,
+      );
+      const endStop = stops.find(
+        (s) => s.locationId === route.destinationLocationId,
+      );
 
-  //     if (!startStop || !endStop) {
-  //       throw new BadRequestException(
-  //         'This Trip does not cover the selected Route locations',
-  //       );
-  //     }
-  //     if (startStop.sequence >= endStop.sequence) {
-  //       throw new BadRequestException('Invalid route direction for this trip');
-  //     }
+      if (!startStop || !endStop) {
+        throw new BadRequestException(
+          'This Trip does not cover the selected Route locations',
+        );
+      }
+      if (startStop.sequence >= endStop.sequence) {
+        throw new BadRequestException('Invalid route direction for this trip');
+      }
 
-  //     const relevantSegments = await this.prisma.tripSegments.findMany({
-  //       where: {
-  //         tripId,
-  //         fromStop: { sequence: { gte: startStop.sequence } },
-  //         toStop: { sequence: { lte: endStop.sequence } },
-  //       },
-  //       select: { id: true },
-  //     });
+      const relevantSegments = await this.prisma.tripSegments.findMany({
+        where: {
+          tripId,
+          fromStop: { sequence: { gte: startStop.sequence } },
+          toStop: { sequence: { lte: endStop.sequence } },
+        },
+        select: { id: true },
+      });
 
-  //     const segmentIds = relevantSegments.map((s) => s.id);
+      const segmentIds = relevantSegments.map((s) => s.id);
 
-  //     // Collect booked seat IDs from multiple sources
-  //     const bookedSeatIds = new Set<string>();
+      // Collect booked seat IDs from multiple sources
+      const bookedRes = await lastValueFrom(
+        this.bookingClient.send<{
+          message: string;
+          data: SeatStatusBookedSeatIdsDto;
+        }>({ cmd: 'booking_get_booked_seat_ids_for_segments' }, {
+          tripId,
+          routeId,
+          segmentIds,
+        } satisfies SeatStatusRequestDto),
+      );
 
-  //     const lockPattern = `lock:trip:${tripId}:*`;
-  //     const activeLocks = await this.cacheManager.keys(lockPattern);
+      const lockedSeatIds = new Set<string>(
+        bookedRes?.data?.bookedSeatIds ?? [],
+      );
 
-  //     if (activeLocks && activeLocks.length > 0) {
-  //       activeLocks.forEach((key) => {
-  //         const parts = key.split(':');
-  //         const segId = parts[4];
-  //         const seatId = parts[6];
-  //         if (segmentIds.includes(segId)) {
-  //           bookedSeatIds.add(seatId);
-  //         }
-  //       });
-  //     }
+      console.log('=== SEAT STATUS DEBUG ===');
+      console.log('tripId:', tripId, 'routeId:', routeId);
+      console.log('segmentIds count:', segmentIds.length);
+      console.log('Total booked seats:', lockedSeatIds.size);
+      console.log('=========================');
 
-  //     // Method 1: Check SeatSegmentLocks (if segments exist)
-  //     if (segmentIds.length > 0) {
-  //       const lockedSeats = await this.prisma.seatSegmentLocks.findMany({
-  //         where: {
-  //           tripId,
-  //           segmentId: { in: segmentIds },
-  //         },
-  //         select: { seatId: true },
-  //       });
-  //       lockedSeats.forEach((lock) => bookedSeatIds.add(lock.seatId));
-  //     }
+      const result = trip.bus.seats.map((seat) => {
+        const isLocked = lockedSeatIds.has(seat.id);
+        return {
+          seatId: seat.id,
+          seatNumber: seat.seatNumber,
+          status: isLocked ? 'BOOKED' : 'AVAILABLE',
+        };
+      });
 
-  //     // Method 2: Check Bookings table directly (fallback when no segments)
-  //     const bookedFromBookings = await this.prisma.bookings.findMany({
-  //       where: {
-  //         tripId,
-  //         routeId,
-  //         status: { in: ['confirmed', 'pendingPayment'] },
-  //       },
-  //       select: { seatId: true },
-  //     });
-  //     bookedFromBookings.forEach((b) => bookedSeatIds.add(b.seatId));
-
-  //     console.log('=== SEAT STATUS DEBUG ===');
-  //     console.log('tripId:', tripId, 'routeId:', routeId);
-  //     console.log('segmentIds count:', segmentIds.length);
-  //     console.log('bookedFromBookings count:', bookedFromBookings.length);
-  //     console.log('Total booked seats:', bookedSeatIds.size);
-  //     console.log('=========================');
-
-  //     const lockedSeatIds = bookedSeatIds;
-
-  //     const result = trip.bus.seats.map((seat) => {
-  //       const isLocked = lockedSeatIds.has(seat.id);
-  //       return {
-  //         seatId: seat.id,
-  //         seatNumber: seat.seatNumber,
-  //         status: isLocked ? 'BOOKED' : 'AVAILABLE',
-  //       };
-  //     });
-
-  //     return {
-  //       message: 'Fetched seat status successfully',
-  //       data: result,
-  //       meta: {
-  //         totalSeats: result.length,
-  //         availableSeats: result.filter((s) => s.status === 'AVAILABLE').length,
-  //       },
-  //     };
-  //   } catch (err) {
-  //     if (
-  //       err instanceof NotFoundException ||
-  //       err instanceof BadRequestException
-  //     ) {
-  //       throw err;
-  //     }
-  //     throw new InternalServerErrorException('Failed to fetch seat status', {
-  //       cause: err,
-  //     });
-  //   }
-  // }
+      return {
+        message: 'Fetched seat status successfully',
+        data: result,
+        meta: {
+          totalSeats: result.length,
+          availableSeats: result.filter((s) => s.status === 'AVAILABLE').length,
+        },
+      };
+    } catch (err) {
+      if (
+        err instanceof NotFoundException ||
+        err instanceof BadRequestException
+      ) {
+        throw err;
+      }
+      throw new InternalServerErrorException('Failed to fetch seat status', {
+        cause: err,
+      });
+    }
+  }
 
   /**
    * Search trips by city names and departure date.
@@ -1045,70 +1041,78 @@ export class TripsService {
     }
   }
 
-  // async getUpcomingTrips(limit: number = 5) {
-  //   try {
-  //     const trips = await this.prisma.trips.findMany({
-  //       where: {
-  //         startTime: { gte: new Date() },
-  //         status: { not: TripStatus.cancelled },
-  //       },
-  //       orderBy: { startTime: 'asc' },
-  //       take: limit,
-  //       include: {
-  //         bus: {
-  //           select: {
-  //             plate: true,
-  //             _count: { select: { seats: true } },
-  //           },
-  //         },
-  //         _count: {
-  //           select: {
-  //             bookings: { where: { status: 'confirmed' } },
-  //           },
-  //         },
-  //         tripStops: {
-  //           orderBy: { sequence: 'asc' },
-  //           include: { location: true },
-  //         },
-  //       },
-  //     });
+  async getUpcomingTrips(limit: number = 5) {
+    try {
+      const trips = await this.prisma.trips.findMany({
+        where: {
+          startTime: { gte: new Date() },
+          status: { not: TripStatus.cancelled },
+        },
+        orderBy: { startTime: 'asc' },
+        take: limit,
+        include: {
+          bus: {
+            select: {
+              plate: true,
+              _count: { select: { seats: true } },
+            },
+          },
+          tripStops: {
+            orderBy: { sequence: 'asc' },
+            include: { location: true },
+          },
+        },
+      });
 
-  //     return trips.map((trip) => {
-  //       const origin = trip.tripStops[0]?.location?.city || 'Unknown';
-  //       const destination =
-  //         trip.tripStops[trip.tripStops.length - 1]?.location?.city ||
-  //         'Unknown';
+      const tripIds = trips.map((t) => t.id);
 
-  //       const totalSeats = trip.bus?._count?.seats || 0;
-  //       const bookedSeats = trip._count?.bookings || 0;
+      const bookedRes = await lastValueFrom(
+        this.bookingClient.send<{
+          message: string;
+          data: { counts: Record<string, number> };
+        }>({ cmd: 'booking_count_confirmed_by_trip_ids' }, {
+          tripIds,
+        } satisfies { tripIds: string[] }),
+      );
 
-  //       let displayStatus: string = trip.status;
-  //       if (bookedSeats >= totalSeats) {
-  //         displayStatus = 'Full';
-  //       } else if (
-  //         new Date(trip.startTime).getTime() - new Date().getTime() <
-  //         30 * 60 * 1000
-  //       ) {
-  //         displayStatus = 'Boarding';
-  //       }
+      const bookedMap = bookedRes?.data?.counts ?? {};
 
-  //       return {
-  //         id: trip.id,
-  //         route: `${origin} - ${destination}`,
-  //         startTime: trip.startTime,
-  //         busPlate: trip.bus?.plate || 'N/A',
-  //         totalSeats,
-  //         bookedSeats,
-  //         seatsInfo: `${bookedSeats}/${totalSeats}`,
-  //         status: displayStatus,
-  //       };
-  //     });
-  //   } catch (error: unknown) {
-  //     throw new InternalServerErrorException('Failed to fetch upcoming trips', {
-  //       cause: error,
-  //     });
-  //   }
-  // }
+      return trips.map((trip) => {
+        const origin = trip.tripStops[0]?.location?.city || 'Unknown';
+        const destination =
+          trip.tripStops[trip.tripStops.length - 1]?.location?.city ||
+          'Unknown';
+
+        const totalSeats = trip.bus?._count?.seats || 0;
+        const bookedSeats = bookedMap[trip.id] ?? 0;
+
+        let displayStatus: string = trip.status;
+        if (bookedSeats >= totalSeats && totalSeats > 0) {
+          displayStatus = 'Full';
+        } else if (
+          new Date(trip.startTime).getTime() - new Date().getTime() <
+          30 * 60 * 1000
+        ) {
+          displayStatus = 'Boarding';
+        }
+
+        return {
+          id: trip.id,
+          route: `${origin} - ${destination}`,
+          startTime: trip.startTime,
+          busPlate: trip.bus?.plate || 'N/A',
+          totalSeats,
+          bookedSeats,
+          seatsInfo: `${bookedSeats}/${totalSeats}`,
+          status: displayStatus,
+        };
+      });
+    } catch (error: unknown) {
+      throw new InternalServerErrorException('Failed to fetch upcoming trips', {
+        cause: error,
+      });
+    }
+  }
 
   findOneSeat(seatId: string) {
     return this.prisma.seats.findUnique({
@@ -1134,6 +1138,25 @@ export class TripsService {
         id: t.id,
         seatCount: t.bus?._count?.seats ?? 0,
       })),
+    };
+  }
+
+  async findIdsByStartTimeRange(dto: TripsFindByStartTimeRangeDto) {
+    const from = new Date(dto.from);
+    const to = new Date(dto.to);
+
+    const trips = await this.prisma.trips.findMany({
+      where: {
+        startTime: { gte: from, lte: to },
+        status: { not: TripStatus.cancelled },
+      },
+      select: { id: true },
+      orderBy: { startTime: 'asc' },
+    });
+
+    return {
+      message: 'Fetched trips by start time range',
+      data: trips,
     };
   }
 }

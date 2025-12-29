@@ -6,6 +6,8 @@ import {
   QueryBookingDto,
   LookupBookingDto,
   ModifyBookingDto,
+  BookingCountByTripDto,
+  SeatStatusRequestDto,
 } from '@app/shared/dto';
 
 @Controller()
@@ -146,5 +148,41 @@ export class BookingsController {
   @MessagePattern({ cmd: 'send_booking_confirmation_sms' })
   async sendBookingConfirmationSms(@Payload() ticketCode: string) {
     return this.bookingsService.sendBookingConfirmationSms(ticketCode);
+  }
+
+  @MessagePattern({ cmd: 'confirm_bookings_many' })
+  confirmMany(@Payload() p: { bookingIds: string[] }) {
+    return this.bookingsService.confirmMany(p.bookingIds);
+  }
+
+  @MessagePattern({ cmd: 'booking_count_active_users' })
+  countActiveUsers(
+    @Payload()
+    p: {
+      dateFrom?: string;
+      dateTo?: string;
+    },
+  ) {
+    return this.bookingsService.countActiveUsers(p?.dateFrom, p?.dateTo);
+  }
+
+  @MessagePattern({ cmd: 'booking_upcoming_for_reminder' })
+  upcomingForReminder(@Payload() p: { from: string; to: string }) {
+    return this.bookingsService.upcomingForReminder(p.from, p.to);
+  }
+
+  @MessagePattern({ cmd: 'booking_get_top_routes' })
+  getTopRoutes(@Payload() p: { limit?: number }) {
+    return this.bookingsService.getTopRoutes(p.limit ?? 5);
+  }
+
+  @MessagePattern({ cmd: 'booking_count_by_trip' })
+  countByTrip(@Payload() p: BookingCountByTripDto) {
+    return this.bookingsService.countByTrip(p.tripId, p.statuses);
+  }
+
+  @MessagePattern({ cmd: 'booking_get_booked_seat_ids_for_segments' })
+  getBookedSeatIdsForSegments(@Payload() p: SeatStatusRequestDto) {
+    return this.bookingsService.getBookedSeatIdsForSegments(p);
   }
 }

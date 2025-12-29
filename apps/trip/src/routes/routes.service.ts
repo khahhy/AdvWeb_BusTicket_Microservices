@@ -7,6 +7,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
+import { RpcException } from '@nestjs/microservices';
 import { RedisCacheService } from '@app/shared';
 import { SettingService } from '../setting/setting.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -27,21 +28,18 @@ import {
   Routes,
   Buses,
 } from '@prisma/client-trip';
-import {
-  TripStatus,
-  BookingStatus,
-  SettingKey,
-  BusType,
-  SortOrder,
-} from '@app/shared/enums';
+import { TripStatus, SettingKey, BusType, SortOrder } from '@app/shared/enums';
 import { TripsForRouteResponse, TopPerformingRoute } from '@app/shared/type';
 import { lastValueFrom } from 'rxjs';
+import { BaseResponse } from '@app/shared';
+import { BookingTopRoutesDto } from '@app/shared/dto';
 
 @Injectable()
 export class RoutesService {
   constructor(
     private readonly prisma: PrismaService,
     @Inject('SUPPORT_SERVICE') private readonly supportClient: ClientProxy,
+    @Inject('BOOKING_SERVICE') private readonly bookingClient: ClientProxy,
     private readonly cacheManager: RedisCacheService,
     private readonly settingService: SettingService,
   ) {}
@@ -137,15 +135,21 @@ export class RoutesService {
 
       return { message: 'Route created successfully', data: route };
     } catch (err) {
-      if (
-        err instanceof BadRequestException ||
-        err instanceof NotFoundException
-      ) {
-        throw err;
-      }
-      throw new InternalServerErrorException('Failed to create route', {
-        cause: err,
+      console.error('[TRIP SERVICE ERROR] Detail error:', err);
+      throw new RpcException({
+        statusCode: 500,
+        message: err.message,
+        error: err,
       });
+      // if (
+      //   err instanceof BadRequestException ||
+      //   err instanceof NotFoundException
+      // ) {
+      //   throw err;
+      // }
+      // throw new InternalServerErrorException('Failed to create route', {
+      //   cause: err,
+      // });
     }
   }
 
@@ -308,62 +312,67 @@ export class RoutesService {
     }
   }
 
-  // async remove(id: string, userId: string, ip: string, userAgent: string) {
-  //   try {
-  //     const route = await this.prisma.routes.findUnique({ where: { id } });
-  //     if (!route) throw new NotFoundException('Route not found');
+  async remove(id: string, userId: string, ip: string, userAgent: string) {
+    try {
+      const route = await this.prisma.routes.findUnique({ where: { id } });
+      if (!route) throw new NotFoundException('Route not found');
 
-  //     const bookingCount = await this.prisma.bookings.count({
-  //       where: { routeId: id },
-  //     });
+      const bookingCountRes = await lastValueFrom(
+        this.bookingClient.send<BaseResponse<{ count: number }>>(
+          { cmd: 'booking_count_by_route' },
+          { routeId: id } as { routeId: string },
+        ),
+      );
 
-  //     if (bookingCount > 0) {
-  //       throw new BadRequestException(
-  //         `Cannot delete this Route. There are ${bookingCount} bookings associated with it.`,
-  //       );
-  //     }
+      const bookingCount = bookingCountRes?.data?.count ?? 0;
 
-  //     await this.prisma.$transaction([
-  //       this.prisma.tripRouteMap.deleteMany({
-  //         where: { routeId: id },
-  //       }),
-  //       this.prisma.routes.delete({
-  //         where: { id },
-  //       }),
-  //     ]);
+      if (bookingCount > 0) {
+        throw new BadRequestException(
+          `Cannot delete this Route. There are ${bookingCount} bookings associated with it.`,
+        );
+      }
 
-  //     await this.clearRouteCache(id);
-  // try {
-  //     await lastValueFrom(
-  //     this.supportClient.emit('log_activity', {
-  //       userId: userId,
-  //       action: 'DELETE_ROUTE',
-  //       entityId: id,
-  //       entityType: 'Routes',
-  //       metadata: { routeId: id },
-  //       ipAddress: ip,
-  //       userAgent: userAgent,
-  //     }),
-  //  );
-  //   } catch (e) {
-  //     console.error(e);
-  //   }
+      await this.prisma.$transaction([
+        this.prisma.tripRouteMap.deleteMany({
+          where: { routeId: id },
+        }),
+        this.prisma.routes.delete({
+          where: { id },
+        }),
+      ]);
 
-  //     return {
-  //       message: 'Route and associated trip-maps deleted successfully',
-  //     };
-  //   } catch (err) {
-  //     if (
-  //       err instanceof NotFoundException ||
-  //       err instanceof BadRequestException
-  //     ) {
-  //       throw err;
-  //     }
-  //     throw new InternalServerErrorException('Failed to delete route', {
-  //       cause: err,
-  //     });
-  //   }
-  // }
+      await this.clearRouteCache(id);
+      try {
+        await lastValueFrom(
+          this.supportClient.emit('log_activity', {
+            userId: userId,
+            action: 'DELETE_ROUTE',
+            entityId: id,
+            entityType: 'Routes',
+            metadata: { routeId: id },
+            ipAddress: ip,
+            userAgent: userAgent,
+          }),
+        );
+      } catch (e) {
+        console.error(e);
+      }
+
+      return {
+        message: 'Route and associated trip-maps deleted successfully',
+      };
+    } catch (err) {
+      if (
+        err instanceof NotFoundException ||
+        err instanceof BadRequestException
+      ) {
+        throw err;
+      }
+      throw new InternalServerErrorException('Failed to delete route', {
+        cause: err,
+      });
+    }
+  }
 
   // trip contain location of route, not sure it's activate
   async findTripsForRoute(routeId: string, query: GetRouteTripsDto) {
@@ -593,73 +602,75 @@ export class RoutesService {
     }
   }
 
-  // async removeTripRouteMap(
-  //   tripId: string,
-  //   routeId: string,
-  //   userId: string,
-  //   ip: string,
-  //   userAgent: string,
-  // ) {
-  //   try {
-  //     const tripRouteMap = await this.prisma.tripRouteMap.findUnique({
-  //       where: {
-  //         tripId_routeId: { tripId, routeId },
-  //       },
-  //     });
+  async removeTripRouteMap(
+    tripId: string,
+    routeId: string,
+    userId: string,
+    ip: string,
+    userAgent: string,
+  ) {
+    try {
+      const tripRouteMap = await this.prisma.tripRouteMap.findUnique({
+        where: {
+          tripId_routeId: { tripId, routeId },
+        },
+      });
 
-  //     if (!tripRouteMap) {
-  //       throw new NotFoundException('TripRouteMap configuration not found');
-  //     }
+      if (!tripRouteMap) {
+        throw new NotFoundException('TripRouteMap configuration not found');
+      }
 
-  //     const bookingCount = await this.prisma.bookings.count({
-  //       where: {
-  //         tripId: tripId,
-  //         routeId: routeId,
-  //       },
-  //     });
+      const bookingCountRes = await lastValueFrom(
+        this.bookingClient.send<BaseResponse<{ count: number }>>(
+          { cmd: 'booking_count_by_trip_route' },
+          { tripId, routeId } as { tripId: string; routeId: string },
+        ),
+      );
 
-  //     if (bookingCount > 0) {
-  //       throw new BadRequestException(
-  //         `Cannot delete this Trip configuration. There are ${bookingCount} bookings associated with it.`,
-  //       );
-  //     }
+      const bookingCount = bookingCountRes?.data?.count ?? 0;
 
-  //     await this.prisma.tripRouteMap.delete({
-  //       where: {
-  //         tripId_routeId: { tripId, routeId },
-  //       },
-  //     });
+      if (bookingCount > 0) {
+        throw new BadRequestException(
+          `Cannot delete this Trip configuration. There are ${bookingCount} bookings associated with it.`,
+        );
+      }
 
-  //     await this.clearTripMapCache(tripId, routeId);
-  // try {
-  //     await lastValueFrom(
-  //     this.supportClient.emit('log_activity', {
-  //       userId: userId,
-  //       action: 'DELETE_TRIP_ROUTE_MAP',
-  //       entityType: 'Routes',
-  //       metadata: { routeId: routeId, tripId: tripId },
-  //       ipAddress: ip,
-  //       userAgent: userAgent,
-  //     }),
-  // );
-  //   } catch (e) {
-  //     console.error(e);
-  //   }
+      await this.prisma.tripRouteMap.delete({
+        where: {
+          tripId_routeId: { tripId, routeId },
+        },
+      });
 
-  //     return { message: 'TripRouteMap deleted successfully' };
-  //   } catch (err) {
-  //     if (
-  //       err instanceof NotFoundException ||
-  //       err instanceof BadRequestException
-  //     ) {
-  //       throw err;
-  //     }
-  //     throw new InternalServerErrorException(
-  //       'Failed to delete trip route map',
-  //       { cause: err },
-  //     );
-  //   }
-  // }
+      await this.clearTripMapCache(tripId, routeId);
+      try {
+        await lastValueFrom(
+          this.supportClient.emit('log_activity', {
+            userId: userId,
+            action: 'DELETE_TRIP_ROUTE_MAP',
+            entityType: 'Routes',
+            metadata: { routeId: routeId, tripId: tripId },
+            ipAddress: ip,
+            userAgent: userAgent,
+          }),
+        );
+      } catch (e) {
+        console.error(e);
+      }
+
+      return { message: 'TripRouteMap deleted successfully' };
+    } catch (err) {
+      if (
+        err instanceof NotFoundException ||
+        err instanceof BadRequestException
+      ) {
+        throw err;
+      }
+      throw new InternalServerErrorException(
+        'Failed to delete trip route map',
+        { cause: err },
+      );
+    }
+  }
 
   async getTripRouteMap(tripId: string, routeId: string) {
     try {
@@ -1234,98 +1245,93 @@ export class RoutesService {
     };
   }
 
-  // async getTopPerforming(limit: number = 5) {
-  //   try {
-  //     const cacheKey = `routes:top-performing:${limit}`;
-  //     const cachedData =
-  //       await this.cacheManager.get<TopPerformingRoute[]>(cacheKey);
+  async getTopPerforming(limit: number = 5) {
+    try {
+      const cacheKey = `routes:top-performing:${limit}`;
+      const cachedData =
+        await this.cacheManager.get<TopPerformingRoute[]>(cacheKey);
 
-  //     if (cachedData) {
-  //       return {
-  //         message: 'Fetched top performing routes successfully (from cache)',
-  //         data: cachedData,
-  //       };
-  //     }
+      if (cachedData) {
+        return {
+          message: 'Fetched top performing routes successfully (from cache)',
+          data: cachedData,
+        };
+      }
 
-  //     const topRoutesRaw = await this.prisma.bookings.groupBy({
-  //       by: ['routeId'],
-  //       where: {
-  //         status: BookingStatus.confirmed,
-  //       },
-  //       _count: {
-  //         id: true,
-  //       },
-  //       _sum: {
-  //         price: true,
-  //       },
-  //       orderBy: {
-  //         _count: {
-  //           id: 'desc',
-  //         },
-  //       },
-  //       take: limit,
-  //     });
+      const statsRes = await lastValueFrom(
+        this.bookingClient.send<BaseResponse<BookingTopRoutesDto[]>>(
+          { cmd: 'booking_get_top_routes' },
+          { limit },
+        ),
+      );
 
-  //     let formattedResult: any[] = [];
+      const topRoutesRaw = statsRes.data ?? [];
 
-  //     if (topRoutesRaw.length > 0) {
-  //       const routeIds = topRoutesRaw.map((item) => item.routeId);
+      let formattedResult: any[] = [];
 
-  //       const routesDetails = await this.prisma.routes.findMany({
-  //         where: {
-  //           id: { in: routeIds },
-  //         },
-  //         select: {
-  //           id: true,
-  //           name: true,
-  //           origin: { select: { city: true, name: true } },
-  //           destination: { select: { city: true, name: true } },
-  //         },
-  //       });
+      if (topRoutesRaw.length > 0) {
+        const routeIds = topRoutesRaw.map((x) => x.routeId);
 
-  //       formattedResult = topRoutesRaw.map((stat) => {
-  //         const routeInfo = routesDetails.find((r) => r.id === stat.routeId);
-  //         return {
-  //           routeId: stat.routeId,
-  //           routeName: routeInfo?.name || 'Unknown Route',
-  //           origin: routeInfo?.origin.city,
-  //           destination: routeInfo?.destination.city,
-  //           totalBookings: stat._count.id,
-  //           totalRevenue: stat._sum.price || 0,
-  //         };
-  //       });
-  //     } else {
-  //       const defaultRoutes = await this.prisma.routes.findMany({
-  //         take: limit,
-  //         where: { isActive: true },
-  //         orderBy: { createdAt: 'desc' },
-  //         include: {
-  //           origin: { select: { city: true, name: true } },
-  //           destination: { select: { city: true, name: true } },
-  //         },
-  //       });
+        const routesDetails = await this.prisma.routes.findMany({
+          where: { id: { in: routeIds } },
+          select: {
+            id: true,
+            name: true,
+            origin: { select: { city: true, name: true } },
+            destination: { select: { city: true, name: true } },
+          },
+        });
 
-  //       formattedResult = defaultRoutes.map((route) => ({
-  //         routeId: route.id,
-  //         routeName: route.name,
-  //         origin: route.origin.city,
-  //         destination: route.destination.city,
-  //         totalBookings: 0,
-  //         totalRevenue: 0,
-  //       }));
-  //     }
+        const formattedResult = topRoutesRaw.map((stat) => {
+          const routeInfo = routesDetails.find((r) => r.id === stat.routeId);
+          return {
+            routeId: stat.routeId,
+            routeName: routeInfo?.name || 'Unknown Route',
+            origin: routeInfo?.origin.city,
+            destination: routeInfo?.destination.city,
+            totalBookings: stat.totalBookings,
+            totalRevenue: stat.totalRevenue,
+          };
+        });
 
-  //     await this.cacheManager.set(cacheKey, formattedResult, 3600);
+        await this.cacheManager.set(cacheKey, formattedResult, 3600);
 
-  //     return {
-  //       message: 'Fetched top performing routes successfully',
-  //       data: formattedResult,
-  //     };
-  //   } catch (err) {
-  //     throw new InternalServerErrorException(
-  //       'Failed to fetch top performing routes',
-  //       { cause: err },
-  //     );
-  //   }
-  // }
+        return {
+          message: 'Fetched top performing routes successfully',
+          data: formattedResult,
+        };
+      } else {
+        const defaultRoutes = await this.prisma.routes.findMany({
+          take: limit,
+          where: { isActive: true },
+          orderBy: { createdAt: 'desc' },
+          include: {
+            origin: { select: { city: true, name: true } },
+            destination: { select: { city: true, name: true } },
+          },
+        });
+
+        formattedResult = defaultRoutes.map((route) => ({
+          routeId: route.id,
+          routeName: route.name,
+          origin: route.origin.city,
+          destination: route.destination.city,
+          totalBookings: 0,
+          totalRevenue: 0,
+        }));
+      }
+
+      await this.cacheManager.set(cacheKey, formattedResult, 3600);
+
+      return {
+        message: 'Fetched top performing routes successfully',
+        data: formattedResult,
+      };
+    } catch (err) {
+      throw new InternalServerErrorException(
+        'Failed to fetch top performing routes',
+        { cause: err },
+      );
+    }
+  }
 }

@@ -18,6 +18,14 @@ import { RedisCacheModule } from '@app/shared';
           port: 3002, // port Support
         },
       },
+      {
+        name: 'BOOKING_SERVICE',
+        transport: Transport.TCP,
+        options: {
+          host: 'localhost',
+          port: 3004,
+        },
+      },
     ]),
   ],
   controllers: [TripsController],

@@ -6,11 +6,11 @@ import { NotificationsController } from './notifications.controller';
   imports: [
     ClientsModule.register([
       {
-        name: 'TRIP_SERVICE',
+        name: 'SUPPORT_SERVICE',
         transport: Transport.TCP,
         options: {
           host: 'localhost',
-          port: 3003,
+          port: 3002,
         },
       },
     ]),

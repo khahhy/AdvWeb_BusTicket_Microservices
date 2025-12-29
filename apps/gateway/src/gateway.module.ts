@@ -10,8 +10,9 @@ import { LocationModule } from './locations/location.module';
 import { TripsModule } from './trips/trips.module';
 import { RoutesModule } from './routes/routes.module';
 import { SettingModule } from './settings/setting.module';
-import { BookingModule } from 'apps/booking/src/booking.module';
+import { BookingsModule } from './bookings/bookings.module';
 import { PaymentModule } from './payment/payment.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -71,8 +72,9 @@ import { PaymentModule } from './payment/payment.module';
     SettingModule,
     TripsModule,
     RoutesModule,
-    BookingModule,
+    BookingsModule,
     PaymentModule,
+    NotificationsModule,
   ],
   controllers: [],
   providers: [],

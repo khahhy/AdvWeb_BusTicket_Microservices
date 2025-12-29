@@ -6,6 +6,7 @@ import {
   TripQueryDto,
   SearchTripDto,
   UpdateTripDto,
+  TripsFindByStartTimeRangeDto,
 } from '@app/shared/dto';
 import { TripStatus } from '@app/shared/enums';
 
@@ -36,10 +37,10 @@ export class TripsController {
     return this.tripsService.findAll(query);
   }
 
-  // @MessagePattern({ cmd: 'get_upcoming_trips' })
-  // async getUpcomingTrips(@Payload() limit: number) {
-  //   return this.tripsService.getUpcomingTrips(limit);
-  // }
+  @MessagePattern({ cmd: 'get_upcoming_trips' })
+  async getUpcomingTrips(@Payload() limit: number) {
+    return this.tripsService.getUpcomingTrips(limit);
+  }
 
   @MessagePattern({ cmd: 'search_trips' })
   async searchTrips(@Payload() dto: SearchTripDto) {
@@ -48,7 +49,11 @@ export class TripsController {
 
   @MessagePattern({ cmd: 'get_trip_detail' })
   async findOne(@Payload() payload: { id: string; includeRoutes: string }) {
-    return this.tripsService.findOne(payload.id, payload.includeRoutes);
+    const trip = await this.tripsService.findOne(
+      payload.id,
+      payload.includeRoutes,
+    );
+    return { status: 'success', data: trip };
   }
 
   @MessagePattern({ cmd: 'update_trip' })
@@ -109,12 +114,12 @@ export class TripsController {
     );
   }
 
-  // @MessagePattern({ cmd: 'get_trip_seats_status' })
-  // async getSeatsStatus(
-  //   @Payload() payload: { tripId: string; routeId: string },
-  // ) {
-  //   return this.tripsService.getSeatsStatus(payload.tripId, payload.routeId);
-  // }
+  @MessagePattern({ cmd: 'get_trip_seats_status' })
+  async getSeatsStatus(
+    @Payload() payload: { tripId: string; routeId: string },
+  ) {
+    return this.tripsService.getSeatsStatus(payload.tripId, payload.routeId);
+  }
 
   @MessagePattern({ cmd: 'find_one_seat' })
   findOneSeat(@Payload() seatId: string) {
@@ -124,5 +129,10 @@ export class TripsController {
   @MessagePattern({ cmd: 'trips_find_recent_with_capacity' })
   findRecentWithCapacity(@Payload() payload: { days?: number }) {
     return this.tripsService.findRecentWithCapacity(payload?.days ?? 30);
+  }
+
+  @MessagePattern({ cmd: 'trips_find_by_start_time_range' })
+  async findByStartTimeRange(@Payload() dto: TripsFindByStartTimeRangeDto) {
+    return this.tripsService.findIdsByStartTimeRange(dto);
   }
 }

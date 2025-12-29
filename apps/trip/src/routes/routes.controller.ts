@@ -13,10 +13,10 @@ import {
 export class RoutesController {
   constructor(private readonly routesService: RoutesService) {}
 
-  // @MessagePattern({ cmd: 'get_top_performing_routes' })
-  // async getTopPerforming(@Payload() limit: number) {
-  //   return this.routesService.getTopPerforming(limit);
-  // }
+  @MessagePattern({ cmd: 'get_top_performing_routes' })
+  async getTopPerforming(@Payload() limit: number) {
+    return this.routesService.getTopPerforming(limit);
+  }
 
   @MessagePattern({ cmd: 'find_trip_route_maps' })
   async findAllTripRouteMaps(@Payload() query: QueryTripRouteMapDto) {
@@ -48,25 +48,25 @@ export class RoutesController {
     );
   }
 
-  // @MessagePattern({ cmd: 'remove_trip_route_map' })
-  // async removeTripRouteMap(
-  //   @Payload()
-  //   payload: {
-  //     tripId: string;
-  //     routeId: string;
-  //     userId: string;
-  //     ip: string;
-  //     userAgent: string;
-  //   },
-  // ) {
-  //   return this.routesService.removeTripRouteMap(
-  //     payload.tripId,
-  //     payload.routeId,
-  //     payload.userId,
-  //     payload.ip,
-  //     payload.userAgent,
-  //   );
-  // }
+  @MessagePattern({ cmd: 'remove_trip_route_map' })
+  async removeTripRouteMap(
+    @Payload()
+    payload: {
+      tripId: string;
+      routeId: string;
+      userId: string;
+      ip: string;
+      userAgent: string;
+    },
+  ) {
+    return this.routesService.removeTripRouteMap(
+      payload.tripId,
+      payload.routeId,
+      payload.userId,
+      payload.ip,
+      payload.userAgent,
+    );
+  }
 
   @MessagePattern({ cmd: 'create_route' })
   async create(
@@ -127,23 +127,23 @@ export class RoutesController {
     );
   }
 
-  // @MessagePattern({ cmd: 'delete_route' })
-  // async remove(
-  //   @Payload()
-  //   payload: {
-  //     id: string;
-  //     userId: string;
-  //     ip: string;
-  //     userAgent: string;
-  //   },
-  // ) {
-  //   return this.routesService.remove(
-  //     payload.id,
-  //     payload.userId,
-  //     payload.ip,
-  //     payload.userAgent,
-  //   );
-  // }
+  @MessagePattern({ cmd: 'delete_route' })
+  async remove(
+    @Payload()
+    payload: {
+      id: string;
+      userId: string;
+      ip: string;
+      userAgent: string;
+    },
+  ) {
+    return this.routesService.remove(
+      payload.id,
+      payload.userId,
+      payload.ip,
+      payload.userAgent,
+    );
+  }
 
   @MessagePattern({ cmd: 'get_trips_for_route' })
   async getTripsForRoute(
