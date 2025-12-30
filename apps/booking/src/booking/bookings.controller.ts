@@ -185,4 +185,9 @@ export class BookingsController {
   getBookedSeatIdsForSegments(@Payload() p: SeatStatusRequestDto) {
     return this.bookingsService.getBookedSeatIdsForSegments(p);
   }
+
+  @MessagePattern({ cmd: 'booking_count_confirmed_by_trip_ids' })
+  countConfirmedByTripIds(@Payload() data: { tripIds: string[] }) {
+    return this.bookingsService.countConfirmedByTripIds(data.tripIds);
+  }
 }

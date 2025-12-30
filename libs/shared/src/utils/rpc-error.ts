@@ -1,46 +1,67 @@
 import { HttpException, HttpStatus } from '@nestjs/common';
 
-export function handleRpcError(error: any): never {
+interface RpcErrorResponse {
+  statusCode?: number;
+  status?: number;
+  message?: string | string[];
+  error?: string;
+}
+
+interface RpcErrorShape {
+  error?: RpcErrorResponse;
+  statusCode?: number;
+  status?: number;
+  message?: string;
+  response?: string | RpcErrorResponse;
+}
+
+export function handleRpcError(error: unknown): never {
   console.error('--- RPC ERROR DETAILS ---');
   console.dir(error, { depth: null });
 
+  const err = error as RpcErrorShape;
+
   let status = HttpStatus.INTERNAL_SERVER_ERROR;
-
-  if (error.statusCode) {
-    status = Number(error.statusCode);
-  } else if (error.status) {
-    status = Number(error.status);
-  } else if (error.response && error.response.statusCode) {
-    status = Number(error.response.statusCode);
-  }
-
-  if (isNaN(status)) {
-    status = HttpStatus.BAD_REQUEST;
-  }
-
   let message = 'Internal Server Error';
   let errorName = 'Rpc Error';
 
-  if (typeof error === 'string') {
-    message = error;
-  } else if (error.message) {
-    message = error.message;
+  if (err.error && typeof err.error === 'object') {
+    if (err.error.statusCode) {
+      status = Number(err.error.statusCode);
+    }
+    if (typeof err.error.message === 'string') {
+      message = err.error.message;
+    }
+    if (err.error.error) {
+      errorName = err.error.error;
+    }
+  } else if (err.statusCode) {
+    status = Number(err.statusCode);
+  } else if (err.status) {
+    status = Number(err.status);
+  } else if (err.response) {
+    if (typeof err.response === 'object') {
+      const res = err.response;
+      if (res.statusCode) status = Number(res.statusCode);
+
+      if (typeof res.message === 'string') {
+        message = res.message;
+      } else if (Array.isArray(res.message) && res.message.length > 0) {
+        message = res.message[0];
+      }
+
+      if (res.error) errorName = res.error;
+    } else if (typeof err.response === 'string') {
+      message = err.response;
+    }
   }
 
-  if (error.response) {
-    if (typeof error.response === 'string') {
-      message = error.response;
-    } else if (typeof error.response === 'object') {
-      if (Array.isArray(error.response.message)) {
-        message = error.response.message[0];
-      } else if (error.response.message) {
-        message = error.response.message;
-      }
+  if (status === HttpStatus.INTERNAL_SERVER_ERROR && err.message) {
+    message = err.message;
+  }
 
-      if (error.response.error) {
-        errorName = error.response.error;
-      }
-    }
+  if (isNaN(status)) {
+    status = HttpStatus.INTERNAL_SERVER_ERROR;
   }
 
   throw new HttpException(

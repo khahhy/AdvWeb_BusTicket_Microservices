@@ -31,7 +31,8 @@
     "generate:booking": "npx prisma generate --schema=./apps/booking/prisma/schema.prisma",
     "generate:support": "npx prisma generate --schema=./apps/support/prisma/schema.prisma",
     "prisma:generate:all": "concurrently \"npm run generate:payment\" \"npm run generate:identity\" \"npm run generate:trip\" \"npm run generate:booking\" \"npm run generate:support\"",
-    "postinstall": "npm run prisma:generate:all"
+    "postinstall": "npm run prisma:generate:all",
+    "prepare": "husky"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
@@ -84,7 +85,9 @@
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-prettier": "^5.2.2",
     "globals": "^16.0.0",
+    "husky": "^9.1.7",
     "jest": "^30.0.0",
+    "lint-staged": "^16.2.7",
     "prettier": "^3.4.2",
     "prisma": "^6.19.0",
     "source-map-support": "^0.5.21",
@@ -95,6 +98,12 @@
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.20.0"
+  },
+  "lint-staged": {
+    "**/*.{ts,js}": [
+      "eslint --fix",
+      "prettier --write"
+    ]
   },
   "jest": {
     "moduleFileExtensions": [

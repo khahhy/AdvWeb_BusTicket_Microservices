@@ -1,0 +1,8 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+echo "Checking code (Lint & Format)..."
+npx lint-staged
+
+
+echo "Ready to commit..."

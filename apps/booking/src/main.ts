@@ -1,5 +1,7 @@
 import { NestFactory } from '@nestjs/core';
+import { ValidationPipe } from '@nestjs/common';
 import { Transport, MicroserviceOptions } from '@nestjs/microservices';
+import { HttpToRpcExceptionFilter } from '@app/shared';
 import { BookingModule } from './booking.module';
 
 async function bootstrap() {
@@ -13,6 +15,14 @@ async function bootstrap() {
       },
     },
   );
+
+  app.useGlobalPipes(
+    new ValidationPipe({
+      transform: true,
+    }),
+  );
+
+  app.useGlobalFilters(new HttpToRpcExceptionFilter());
 
   await app.listen();
   console.log('Booking Microservice is listening on port 3004');

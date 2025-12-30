@@ -1,5 +1,7 @@
 import { NestFactory } from '@nestjs/core';
+import { ValidationPipe } from '@nestjs/common';
 import { Transport, MicroserviceOptions } from '@nestjs/microservices';
+import { HttpToRpcExceptionFilter } from '@app/shared';
 import { PaymentModule } from './payment.module';
 
 async function bootstrap() {
@@ -13,6 +15,14 @@ async function bootstrap() {
       },
     },
   );
+
+  app.useGlobalPipes(
+    new ValidationPipe({
+      transform: true,
+    }),
+  );
+
+  app.useGlobalFilters(new HttpToRpcExceptionFilter());
 
   await app.listen();
   console.log('Payment Microservice is listening on port 3005');

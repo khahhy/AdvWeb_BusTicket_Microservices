@@ -1732,4 +1732,32 @@ export class BookingsService {
       } satisfies SeatStatusBookedSeatIdsDto,
     };
   }
+
+  async countConfirmedByTripIds(tripIds: string[]) {
+    const counts = await this.prisma.bookings.groupBy({
+      by: ['tripId'],
+      where: {
+        tripId: { in: tripIds },
+        status: 'confirmed',
+      },
+      _count: {
+        id: true,
+      },
+    });
+
+    const result: Record<string, number> = {};
+
+    tripIds.forEach((id) => (result[id] = 0));
+
+    counts.forEach((item) => {
+      result[item.tripId] = item._count.id;
+    });
+
+    return {
+      message: 'Count success',
+      data: {
+        counts: result,
+      },
+    };
+  }
 }

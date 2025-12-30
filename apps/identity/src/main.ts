@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { Transport, MicroserviceOptions } from '@nestjs/microservices';
 import { IdentityModule } from './identity.module';
+import { HttpToRpcExceptionFilter } from '@app/shared';
 
 async function bootstrap() {
   const app = await NestFactory.createMicroservice<MicroserviceOptions>(
@@ -17,11 +18,11 @@ async function bootstrap() {
 
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true,
       transform: true,
-      forbidNonWhitelisted: true,
     }),
   );
+
+  app.useGlobalFilters(new HttpToRpcExceptionFilter());
 
   await app.listen();
   console.log('Identity Microservice is listening on port 3001');
