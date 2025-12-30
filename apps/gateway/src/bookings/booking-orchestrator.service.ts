@@ -13,15 +13,15 @@ import { BookingStatus } from '@app/shared/enums';
 
 /**
  * Saga Orchestrator for Booking Flow
- * 
+ *
  * This service orchestrates the distributed transaction for creating a booking and payment.
  * Pattern: Orchestration-based Saga
- * 
+ *
  * Flow:
  * 1. Create Booking (Booking Service) -> pendingPayment status
  * 2. Create Payment Link (Payment Service) -> payment link URL
  * 3. If any step fails, execute compensating transactions
- * 
+ *
  * Compensating Actions:
  * - If payment creation fails: Cancel the booking
  */
@@ -44,7 +44,7 @@ export class BookingOrchestrator {
     createBookingDto: CreateBookingDto,
   ): Promise<BookingSagaResponseDto> {
     this.logger.log('Starting Booking Saga Orchestration');
-    
+
     let bookingResult: BookingCreationDataDto | null = null;
 
     try {
@@ -102,7 +102,10 @@ export class BookingOrchestrator {
         },
       };
     } catch (error) {
-      this.logger.error('Saga failed, executing compensating transaction', error);
+      this.logger.error(
+        'Saga failed, executing compensating transaction',
+        error,
+      );
 
       // COMPENSATING TRANSACTION: Cancel booking if it was created
       if (bookingResult) {
@@ -124,10 +127,7 @@ export class BookingOrchestrator {
       );
 
       await firstValueFrom(
-        this.bookingClient.send(
-          { cmd: 'cancel_booking' },
-          { id: bookingId },
-        ),
+        this.bookingClient.send({ cmd: 'cancel_booking' }, { id: bookingId }),
       );
 
       this.logger.log(`COMPENSATING SUCCESS: Booking ${bookingId} cancelled`);
@@ -148,7 +148,9 @@ export class BookingOrchestrator {
    * Step 2: Send e-ticket
    */
   async confirmBookingPayment(bookingIds: string[]) {
-    this.logger.log(`Starting Payment Confirmation Saga for bookings: ${bookingIds.join(', ')}`);
+    this.logger.log(
+      `Starting Payment Confirmation Saga for bookings: ${bookingIds.join(', ')}`,
+    );
 
     try {
       // STEP 1: Confirm bookings
@@ -165,20 +167,26 @@ export class BookingOrchestrator {
       this.logger.log('Step 2: Sending e-tickets...');
       for (const bookingId of bookingIds) {
         try {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           const bookingData = await firstValueFrom(
             this.bookingClient.send({ cmd: 'find_one_booking' }, bookingId),
           );
 
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
           if (bookingData?.data?.ticketCode) {
             await firstValueFrom(
               this.bookingClient.send(
                 { cmd: 'send_eticket_email' },
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
                 bookingData.data.ticketCode,
               ),
             );
           }
         } catch (emailError) {
-          this.logger.warn(`Failed to send e-ticket for booking ${bookingId}`, emailError);
+          this.logger.warn(
+            `Failed to send e-ticket for booking ${bookingId}`,
+            emailError,
+          );
           // Don't fail the saga if email sending fails
         }
       }
@@ -201,7 +209,9 @@ export class BookingOrchestrator {
    * Step 2: Cancel bookings (compensating action)
    */
   async handlePaymentFailure(bookingIds: string[], reason?: string) {
-    this.logger.log(`Starting Payment Failure Saga for bookings: ${bookingIds.join(', ')}`);
+    this.logger.log(
+      `Starting Payment Failure Saga for bookings: ${bookingIds.join(', ')}`,
+    );
 
     try {
       // Cancel all related bookings
@@ -213,9 +223,14 @@ export class BookingOrchestrator {
               { id: bookingId },
             ),
           );
-          this.logger.log(`Booking ${bookingId} cancelled due to payment failure`);
+          this.logger.log(
+            `Booking ${bookingId} cancelled due to payment failure`,
+          );
         } catch (cancelError) {
-          this.logger.error(`Failed to cancel booking ${bookingId}`, cancelError);
+          this.logger.error(
+            `Failed to cancel booking ${bookingId}`,
+            cancelError,
+          );
         }
       }
 

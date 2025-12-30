@@ -28,5 +28,7 @@ export * from './utils/rpc-error';
 
 export * from './auth/shared-auth.module';
 export * from './auth/guards/jwt-auth.guard';
+export * from './auth/guards/google-auth.guard';
+export * from './auth/strategies/google.strategy';
 
 export * from './filters/http-to-rpc-exception.filter';

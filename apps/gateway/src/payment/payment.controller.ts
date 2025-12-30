@@ -84,7 +84,7 @@ export class PaymentController {
   async handlePayOSWebhook(@Body() webhookData: PayOSWebhookDto) {
     return await firstValueFrom(
       this.paymentClient.send<PayOSWebhookResponseDto>(
-        { cmd: 'handle_payos_webhook' },
+        { cmd: 'payos_webhook' },
         webhookData,
       ),
     );

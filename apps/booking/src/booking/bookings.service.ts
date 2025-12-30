@@ -1760,4 +1760,29 @@ export class BookingsService {
       },
     };
   }
+
+  async countBookingsByRoute(routeId: string) {
+    const count = await this.prisma.bookings.count({
+      where: {
+        routeId: routeId,
+        status: { not: BookingStatus.cancelled },
+      },
+    });
+
+    return { count };
+  }
+
+  async countBookingsByTripAndRoute(tripId: string, routeId: string) {
+    const count = await this.prisma.bookings.count({
+      where: {
+        tripId: tripId,
+        routeId: routeId,
+        status: {
+          not: BookingStatus.cancelled,
+        },
+      },
+    });
+
+    return { count };
+  }
 }

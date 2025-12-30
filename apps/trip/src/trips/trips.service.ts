@@ -1115,9 +1115,13 @@ export class TripsService {
   }
 
   findOneSeat(seatId: string) {
-    return this.prisma.seats.findUnique({
+    const data = this.prisma.seats.findUnique({
       where: { id: seatId },
     });
+    return {
+      message: 'Seat found',
+      data,
+    };
   }
 
   async findRecentWithCapacity(days = 30) {

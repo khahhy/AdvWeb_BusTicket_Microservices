@@ -190,4 +190,19 @@ export class BookingsController {
   countConfirmedByTripIds(@Payload() data: { tripIds: string[] }) {
     return this.bookingsService.countConfirmedByTripIds(data.tripIds);
   }
+
+  @MessagePattern({ cmd: 'booking_count_by_route' })
+  async countByRoute(@Payload() data: { routeId: string }) {
+    return this.bookingsService.countBookingsByRoute(data.routeId);
+  }
+
+  @MessagePattern({ cmd: 'booking_count_by_trip_route' })
+  async countByTripAndRoute(
+    @Payload() payload: { tripId: string; routeId: string },
+  ) {
+    return this.bookingsService.countBookingsByTripAndRoute(
+      payload.tripId,
+      payload.routeId,
+    );
+  }
 }

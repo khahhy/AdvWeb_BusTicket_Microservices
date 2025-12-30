@@ -188,11 +188,14 @@ export class PaymentService {
       );
 
       return {
-        paymentId: payment.id,
-        checkoutUrl: linkData.checkoutUrl || linkData.checkout_url || '',
-        qrCode: linkData.qrCode || linkData.qr_code,
-        orderCode: linkData.orderCode || linkData.order_code || orderCode,
-        amount: linkData.amount || amount,
+        message: 'Payment link created successfully',
+        data: {
+          paymentId: payment.id,
+          checkoutUrl: linkData.checkoutUrl || linkData.checkout_url || '',
+          qrCode: linkData.qrCode || linkData.qr_code,
+          orderCode: linkData.orderCode || linkData.order_code || orderCode,
+          amount: linkData.amount || amount,
+        },
       };
     } catch (error) {
       // Nếu tạo payment link thất bại, cập nhật payment status

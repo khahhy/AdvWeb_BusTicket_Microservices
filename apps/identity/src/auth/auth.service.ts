@@ -289,13 +289,13 @@ export class AuthService {
     // Send password reset email
     try {
       await lastValueFrom(
-        this.supportClient.emit('forgot_password', {
+        this.supportClient.emit('password_reset_requested', {
           email: user.email,
           resetToken: resetToken,
         }),
       );
     } catch (error) {
-      console.error('Error emitting forgot_password event:', error);
+      console.error('Error emitting password_reset_requested event:', error);
     }
 
     return {

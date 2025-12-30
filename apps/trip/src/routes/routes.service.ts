@@ -138,7 +138,9 @@ export class RoutesService {
       console.error('[TRIP SERVICE ERROR] Detail error:', err);
       throw new RpcException({
         statusCode: 500,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
         message: err.message,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         error: err,
       });
       // if (
@@ -362,6 +364,7 @@ export class RoutesService {
         message: 'Route and associated trip-maps deleted successfully',
       };
     } catch (err) {
+      console.error('Error deleting route:', err);
       if (
         err instanceof NotFoundException ||
         err instanceof BadRequestException

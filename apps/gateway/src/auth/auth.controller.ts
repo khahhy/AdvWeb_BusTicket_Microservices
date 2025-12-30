@@ -16,6 +16,7 @@ import {
   ApiOperation,
   ApiBearerAuth,
   ApiQuery,
+  ApiBody,
 } from '@nestjs/swagger';
 import { firstValueFrom } from 'rxjs';
 import type { Response } from 'express';
@@ -26,6 +27,7 @@ import {
   ResetPasswordDto,
   UpdateProfileDto,
   UserDto,
+  ResendVerificationDto,
 } from '@app/shared/dto';
 import type {
   RequestWithGoogleUser,
@@ -33,7 +35,7 @@ import type {
   BaseResponse,
 } from '@app/shared/type';
 import { JwtAuthGuard, handleRpcError } from '@app/shared';
-import { GoogleAuthGuard } from './guards/google-auth.guard';
+import { GoogleAuthGuard } from '@app/shared';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -88,6 +90,7 @@ export class AuthController {
 
   @ApiOperation({ summary: 'Resend verification email' })
   @Post('resend-verification')
+  @ApiBody({ type: ResendVerificationDto })
   async resendVerification(@Body('email') email: string) {
     try {
       return await firstValueFrom(
