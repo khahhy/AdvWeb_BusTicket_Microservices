@@ -286,6 +286,14 @@ export class PaymentService {
           `Payment successful for ${allBookingIds.length} booking(s)`,
         );
 
+        // Emit event for saga orchestrator
+        this.supportClient.emit('payment.success', {
+          bookingId,
+          bookingIds: allBookingIds,
+          amount: paymentData.amount,
+          orderCode: paymentData.orderCode,
+        });
+
         // Gửi email xác nhận và e-ticket for each booking
         for (const currentBookingId of allBookingIds) {
           try {
@@ -378,6 +386,9 @@ export class PaymentService {
         });
       } else {
         // Thanh toán thất bại
+        const metadata = payment.metadata as { relatedBookingIds?: string[] };
+        const allBookingIds = metadata?.relatedBookingIds || [bookingId];
+
         await this.prisma.payments.update({
           where: { id: payment.id },
           data: {
@@ -388,6 +399,13 @@ export class PaymentService {
         this.logger.log(
           `Payment failed for booking: ${bookingId}, code: ${webhookCode}`,
         );
+
+        // Emit event for saga orchestrator to handle compensation
+        this.supportClient.emit('payment.failed', {
+          bookingId,
+          bookingIds: allBookingIds,
+          reason: webhookData.desc || 'Payment failed',
+        });
 
         // Emit WebSocket event for payment failure
         this.paymentGateway.emitPaymentFailure(bookingId, {

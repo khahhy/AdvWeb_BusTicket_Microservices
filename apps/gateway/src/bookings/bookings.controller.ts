@@ -41,6 +41,7 @@ import {
   BookingTrendsResponseDto,
   OccupancyRateResponseDto,
   FullETicketResponseDto,
+  BookingSagaResponseDto,
 } from '@app/shared/dto';
 import {
   JwtAuthGuard,
@@ -51,12 +52,14 @@ import {
   handleRpcError,
   type RequestWithUser,
 } from '@app/shared';
+import { BookingOrchestrator } from './booking-orchestrator.service';
 
 @ApiTags('bookings')
 @Controller('bookings')
 export class BookingsController {
   constructor(
     @Inject('BOOKING_SERVICE') private readonly bookingClient: ClientProxy,
+    private readonly bookingOrchestrator: BookingOrchestrator,
   ) {}
 
   @Post('lock')
@@ -336,9 +339,18 @@ export class BookingsController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Create a new booking (Lock seat & Init payment)' })
+  @ApiOperation({
+    summary: 'Create booking with payment (Saga Orchestrator)',
+    description:
+      'Creates a booking and payment link in a single orchestrated transaction. ' +
+      'If payment creation fails, the booking will be automatically cancelled (compensating transaction).',
+  })
   @ApiBody({ type: CreateBookingDto })
-  @ApiResponse({ status: 201, type: BookingResponseDto })
+  @ApiResponse({
+    status: 201,
+    type: BookingSagaResponseDto,
+    description: 'Booking and payment created successfully',
+  })
   @ApiResponse({
     status: 409,
     description: 'Seat conflict! The selected seat is already booked/locked.',
@@ -346,11 +358,8 @@ export class BookingsController {
   @ApiResponse({ status: 400, description: 'Invalid trip or route logic.' })
   async create(@Body() createBookingDto: CreateBookingDto) {
     try {
-      return await firstValueFrom(
-        this.bookingClient.send<BaseResponse<BookingResponseDto>>(
-          { cmd: 'create_booking' },
-          createBookingDto,
-        ),
+      return await this.bookingOrchestrator.createBookingWithPayment(
+        createBookingDto,
       );
     } catch (e) {
       handleRpcError(e);
