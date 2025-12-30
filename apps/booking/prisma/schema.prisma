@@ -48,19 +48,31 @@ model SeatSegmentLocks {
 }
 
 model Reviews {
-  id        String   @id @default(uuid())
-  rating    Int
-  comment   String?
-  createdAt DateTime @default(now())
+  id            String       @id @default(uuid())
+  bookingId     String
+  userId        String 
+  rating        Int
+  comment       String?
+  status        ReviewStatus @default(visible)
+  flaggedReason String?
+  moderatedAt   DateTime?
+  moderatedBy   String?
+  createdAt     DateTime     @default(now())
   
-  userId    String 
-  
-  bookingId String
-  booking   Bookings @relation(fields: [bookingId], references: [id])
+  booking       Bookings     @relation(fields: [bookingId], references: [id])
+
+  @@index([bookingId])
+  @@index([userId])
 }
 
 enum BookingStatus {
   pendingPayment
   confirmed
   cancelled
+}
+
+enum ReviewStatus {
+  visible
+  hidden
+  flagged
 }

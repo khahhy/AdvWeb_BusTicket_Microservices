@@ -14,6 +14,7 @@ import { BookingsModule } from './bookings/bookings.module';
 import { PaymentModule } from './payment/payment.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { ChatbotModule } from './chatbot/chatbot.module';
+import { ReviewsModule } from './reviews/reviews.module';
 
 @Module({
   imports: [
@@ -77,6 +78,7 @@ import { ChatbotModule } from './chatbot/chatbot.module';
     PaymentModule,
     NotificationsModule,
     ChatbotModule,
+    ReviewsModule,
   ],
   controllers: [],
   providers: [],

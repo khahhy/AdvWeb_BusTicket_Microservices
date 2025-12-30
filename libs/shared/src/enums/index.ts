@@ -5,8 +5,10 @@ export * from './gateway-type.enum';
 export * from './notification-type.enum';
 export * from './notification-status.enum';
 export * from './payment-status.enum';
+export * from './review-status.enum';
 export * from './setting-key.enum';
 export * from './trip-status.enum';
 export * from './user-status.enum';
 export * from './user-role.enum';
 export * from './sort-order.enum';
+
