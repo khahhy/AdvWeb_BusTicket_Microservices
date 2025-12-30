@@ -13,6 +13,7 @@ import { SettingModule } from './settings/setting.module';
 import { BookingsModule } from './bookings/bookings.module';
 import { PaymentModule } from './payment/payment.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { ChatbotModule } from './chatbot/chatbot.module';
 
 @Module({
   imports: [
@@ -75,6 +76,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     BookingsModule,
     PaymentModule,
     NotificationsModule,
+    ChatbotModule,
   ],
   controllers: [],
   providers: [],

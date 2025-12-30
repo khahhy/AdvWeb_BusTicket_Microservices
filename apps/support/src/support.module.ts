@@ -4,6 +4,7 @@ import { EmailModule } from './email/email.module';
 import { ActivityLogsModule } from './activity-logs/activity-logs.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { ChatbotModule } from './chatbot/chatbot.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     EmailModule,
     ActivityLogsModule,
     NotificationsModule,
+    ChatbotModule,
   ],
   controllers: [],
   providers: [],

@@ -5,3 +5,4 @@ export * from './trip-available-for-route.interface';
 export * from './setting-value.interface';
 export * from './service-response.interface';
 export * from './statstic.interface';
+export * from './chatbot.interface';

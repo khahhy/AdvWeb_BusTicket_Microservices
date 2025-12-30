@@ -11,3 +11,5 @@ export * from './setting';
 export * from './booking';
 
 export * from './payment';
+
+export * from './chatbot';
