@@ -3,6 +3,7 @@
   "collection": "@nestjs/schematics",
   "sourceRoot": "apps/gateway/src",
   "compilerOptions": {
+    "assets": ["assets/**/*"],
     "deleteOutDir": true,
     "webpack": true,
     "tsConfigPath": "apps/gateway/tsconfig.app.json"
@@ -25,7 +26,9 @@
       "entryFile": "main",
       "sourceRoot": "apps/booking/src",
       "compilerOptions": {
-        "tsConfigPath": "apps/booking/tsconfig.app.json"
+        "tsConfigPath": "apps/booking/tsconfig.app.json",
+        "assets": ["assets/**/*"],
+        "watchAssets": true
       }
     },
     "identity": {

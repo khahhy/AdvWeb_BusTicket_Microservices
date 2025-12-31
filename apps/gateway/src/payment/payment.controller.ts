@@ -225,7 +225,7 @@ export class PaymentController {
     try {
       return await firstValueFrom(
         this.paymentClient.send<BaseResponse<RefundPaymentResponseDto>>(
-          { cmd: 'refund_payment' },
+          { cmd: 'cancel_with_refund' },
           { bookingId, userId: req.user.userId, reason: body?.reason },
         ),
       );

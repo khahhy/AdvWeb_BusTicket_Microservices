@@ -5,6 +5,7 @@ import { ETicketModule } from './eticket/eticket.module';
 import { BookingsModule } from './booking/bookings.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { RedisCacheModule } from '@app/shared';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { RedisCacheModule } from '@app/shared';
     ETicketModule,
     BookingsModule,
     ReviewsModule,
+    HealthModule,
   ],
   controllers: [],
   providers: [],

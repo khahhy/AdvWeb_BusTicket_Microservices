@@ -41,9 +41,9 @@ import { EmailService } from '../email/email.service';
   controllers: [NotificationsController, SmsController],
   providers: [
     NotificationsService,
-    NotificationsSchedulerService,
     SmsService,
     EmailService,
+    NotificationsSchedulerService,
   ],
   exports: [NotificationsService, SmsService],
 })

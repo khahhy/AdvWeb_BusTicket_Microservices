@@ -13,6 +13,7 @@ import type {
   ChatContext,
   PendingSearch,
   ParsedIntent,
+  BookingState,
 } from '@app/shared/type';
 
 interface Location {
@@ -319,7 +320,7 @@ CRITICAL: Return ONLY valid JSON. Use null (not "null" string) for missing value
 
       if (searchParams.needMoreInfo) {
         return {
-          message: searchParams.clarificationMessage,
+          message: searchParams.clarificationMessage ?? '',
           type: 'text',
           data: {
             pendingSearch: searchParams,
@@ -423,7 +424,7 @@ CRITICAL: Return ONLY valid JSON. Use null (not "null" string) for missing value
     _entities: Record<string, unknown>,
     context?: ChatContext,
   ): Promise<ChatResponseDto> {
-    const bookingState = context?.bookingState || {};
+    const bookingState = (context?.bookingState || {}) as BookingState;
     const stage = bookingState.stage || 'init';
 
     // Check if user wants to view seat map

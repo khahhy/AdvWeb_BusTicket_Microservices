@@ -1114,8 +1114,8 @@ export class TripsService {
     }
   }
 
-  findOneSeat(seatId: string) {
-    const data = this.prisma.seats.findUnique({
+  async findOneSeat(seatId: string) {
+    const data = await this.prisma.seats.findUnique({
       where: { id: seatId },
     });
     return {
@@ -1162,5 +1162,12 @@ export class TripsService {
       message: 'Fetched trips by start time range',
       data: trips,
     };
+  }
+
+  async findByIds(ids: string[]) {
+    return this.prisma.trips.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, startTime: true },
+    });
   }
 }

@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import PDFDocument from 'pdfkit';
 import * as QRCode from 'qrcode';
 import { firstValueFrom } from 'rxjs';
+import * as path from 'path';
 import { BaseResponse } from '@app/shared';
 import { TripDto, RouteDto, SeatDto, TripStopDetailDto } from '@app/shared/dto';
 
@@ -298,6 +299,21 @@ export class ETicketService {
       });
 
       const chunks: Buffer[] = [];
+
+      const fontPath = path.join(
+        process.cwd(),
+        'dist',
+        'apps',
+        'booking',
+        'assets',
+        'Roboto-Regular.ttf',
+      );
+      try {
+        doc.registerFont('Vietnamese', fontPath);
+      } catch (err) {
+        console.warn('Load font failed', err);
+      }
+
       // PDFKit chunk type is compatible with Buffer
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       doc.on('data', (chunk) => chunks.push(chunk));
@@ -420,7 +436,7 @@ export class ETicketService {
       // Full Name
       doc.fillColor('#6b7280').fontSize(10).font('Helvetica');
       doc.text('Full Name', margin, y);
-      doc.fillColor('#111827').fontSize(12).font('Helvetica-Bold');
+      doc.fillColor('#111827').fontSize(12).font('Vietnamese');
       doc.text(data.passengerName, margin, y + 14);
       y += 38;
 

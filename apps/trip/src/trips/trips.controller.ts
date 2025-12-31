@@ -135,4 +135,9 @@ export class TripsController {
   async findByStartTimeRange(@Payload() dto: TripsFindByStartTimeRangeDto) {
     return this.tripsService.findIdsByStartTimeRange(dto);
   }
+
+  @MessagePattern({ cmd: 'get_trips_by_ids' })
+  async getTripsByIds(@Payload() ids: string[]) {
+    return this.tripsService.findByIds(ids);
+  }
 }

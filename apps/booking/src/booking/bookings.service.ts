@@ -1261,31 +1261,45 @@ export class BookingsService {
 
   async getBookingTrends() {
     try {
-      const result = await this.prisma.$queryRaw`
-        SELECT 
-          EXTRACT(HOUR FROM t."startTime") as hour, 
-          COUNT(b.id) as count
-        FROM "Bookings" b
-        JOIN "Trips" t ON b."tripId" = t.id
-        WHERE b.status = 'confirmed'
-        GROUP BY EXTRACT(HOUR FROM t."startTime")
-        ORDER BY hour ASC;
-      `;
+      const bookings = await this.prisma.bookings.findMany({
+        where: { status: 'confirmed' },
+        select: { id: true, tripId: true },
+      });
+
+      if (bookings.length === 0) {
+        const emptyStats = Array.from({ length: 24 }, (_, i) => ({
+          hour: `${i}:00`,
+          bookings: 0,
+        }));
+        return { message: 'Success', data: emptyStats };
+      }
+
+      const uniqueTripIds = [...new Set(bookings.map((b) => b.tripId))];
+
+      const tripsRes = await lastValueFrom(
+        this.tripClient.send<BaseResponse<{ id: string; startTime: string }[]>>(
+          { cmd: 'get_trips_by_ids' },
+          uniqueTripIds,
+        ),
+      );
+
+      const tripsMap = new Map<string, Date>();
+      (tripsRes.data || []).forEach((t) => {
+        tripsMap.set(t.id, new Date(t.startTime));
+      });
 
       const fullDayStats = Array.from({ length: 24 }, (_, i) => ({
         hour: `${i}:00`,
         bookings: 0,
       }));
 
-      (
-        result as {
-          hour: number | string;
-          count: bigint | number;
-        }[]
-      ).forEach((item) => {
-        const hourIndex = Number(item.hour);
-        if (fullDayStats[hourIndex]) {
-          fullDayStats[hourIndex].bookings = Number(item.count);
+      bookings.forEach((booking) => {
+        const tripStartTime = tripsMap.get(booking.tripId);
+        if (tripStartTime) {
+          const hourIndex = tripStartTime.getHours();
+          if (fullDayStats[hourIndex]) {
+            fullDayStats[hourIndex].bookings += 1;
+          }
         }
       });
 
@@ -1294,7 +1308,7 @@ export class BookingsService {
         data: fullDayStats,
       };
     } catch (err) {
-      console.error(err);
+      console.error('Error in getBookingTrends:', err);
       throw new InternalServerErrorException('Failed to get booking trends');
     }
   }
@@ -1446,9 +1460,9 @@ export class BookingsService {
   async handleBookingExpiration() {
     try {
       const bookingRuleRes = await lastValueFrom(
-        this.tripClient.send<BaseResponse<unknown>>(
+        this.tripClient.send<BaseResponse<BookingRulesSettingsDto>>(
           { cmd: 'get_setting' },
-          { key: SettingKey.BOOKING_RULES },
+          SettingKey.BOOKING_RULES,
         ),
       );
 

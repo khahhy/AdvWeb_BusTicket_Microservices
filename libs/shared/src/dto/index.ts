@@ -15,3 +15,5 @@ export * from './payment';
 export * from './chatbot';
 
 export * from './review';
+
+export * from './health.dto';

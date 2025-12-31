@@ -7,7 +7,7 @@ export interface UserContext {
 }
 
 export interface BookingState {
-  stage: 'seat_selection' | 'passenger_info' | 'payment';
+  stage: 'init' | 'seat_selection' | 'passenger_details' | 'payment';
   tripId: string;
   routeId: string;
   price: number;
@@ -25,9 +25,9 @@ export interface BookingState {
   totalPrice?: number;
   bookingId?: string;
   passengerInfo?: {
-    name: string;
-    email: string;
-    phone: string;
+    name?: string;
+    email?: string;
+    phone?: string;
   };
 }
 

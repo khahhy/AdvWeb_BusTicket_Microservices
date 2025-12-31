@@ -5,6 +5,7 @@ import { BusesModule } from './buses/buses.module';
 import { LocationModule } from './location/location.module';
 import { TripsModule } from './trips/trips.module';
 import { RoutesModule } from './routes/routes.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { RoutesModule } from './routes/routes.module';
     LocationModule,
     TripsModule,
     RoutesModule,
+    HealthModule,
   ],
   controllers: [],
   providers: [],

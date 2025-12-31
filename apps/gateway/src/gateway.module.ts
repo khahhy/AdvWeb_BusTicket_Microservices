@@ -15,6 +15,7 @@ import { PaymentModule } from './payment/payment.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { ChatbotModule } from './chatbot/chatbot.module';
 import { ReviewsModule } from './reviews/reviews.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -79,6 +80,7 @@ import { ReviewsModule } from './reviews/reviews.module';
     NotificationsModule,
     ChatbotModule,
     ReviewsModule,
+    HealthModule,
   ],
   controllers: [],
   providers: [],

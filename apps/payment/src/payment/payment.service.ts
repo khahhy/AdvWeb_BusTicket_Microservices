@@ -868,9 +868,9 @@ export class PaymentService {
     }
 
     const bookingRuleRes = await lastValueFrom(
-      this.tripClient.send<BaseResponse<unknown>>(
+      this.tripClient.send<BaseResponse<BookingRulesSettingsDto>>(
         { cmd: 'get_setting' },
-        { key: SettingKey.BOOKING_RULES },
+        SettingKey.BOOKING_RULES,
       ),
     );
 

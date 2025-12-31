@@ -164,22 +164,28 @@ export class NotificationsSchedulerService {
               await this.sendTripReminderEmail(bookingData);
               emailSent = true;
 
-              // Create email notification record
-              await this.prisma.notifications.create({
-                data: {
-                  userId: bookingData.userId!,
-                  bookingId: bookingData.id,
-                  type: 'email',
-                  template: 'trip_reminder',
-                  content: `Your trip to ${bookingData.route.destination.name} departs tomorrow at ${bookingData.trip.startTime.toLocaleTimeString()}. Please arrive 30 minutes early.`,
-                  status: 'sent',
-                  sentAt: new Date(),
-                },
-              });
+              if (!bookingData.userId) {
+                this.logger.warn(
+                  `User ID is null for booking ${bookingData.ticketCode}, cannot log notification properly.`,
+                );
+              } else {
+                // Create email notification record
+                await this.prisma.notifications.create({
+                  data: {
+                    userId: bookingData.userId,
+                    bookingId: bookingData.id,
+                    type: 'email',
+                    template: 'trip_reminder',
+                    content: `Your trip to ${bookingData.route.destination.name} departs tomorrow at ${bookingData.trip.startTime.toLocaleTimeString()}. Please arrive 30 minutes early.`,
+                    status: 'sent',
+                    sentAt: new Date(),
+                  },
+                });
 
-              this.logger.log(
-                `Email reminder sent for booking ${bookingData.ticketCode}`,
-              );
+                this.logger.log(
+                  `Email reminder sent for booking ${bookingData.ticketCode}`,
+                );
+              }
             } catch (error) {
               this.logger.error(
                 `Failed to send email for booking ${bookingData.ticketCode}:`,

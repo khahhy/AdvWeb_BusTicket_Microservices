@@ -298,17 +298,21 @@ export class BookingsController {
     @Res() res: Response,
   ) {
     try {
-      const pdfBuffer = await firstValueFrom(
-        this.bookingClient.send<Buffer>(
-          { cmd: 'download_eticket_pdf' },
-          ticketCode,
-        ),
+      const result = await firstValueFrom(
+        this.bookingClient.send<{
+          type: 'Buffer';
+          data: number[];
+        }>({ cmd: 'download_eticket_pdf' }, ticketCode),
       );
+
+      const pdfBuffer = Buffer.from(result.data);
 
       res.setHeader(
         'Content-Disposition',
         `attachment; filename="eticket-${ticketCode}.pdf"`,
       );
+      res.setHeader('Content-Type', 'application/pdf');
+
       res.send(pdfBuffer);
     } catch (e) {
       handleRpcError(e);
