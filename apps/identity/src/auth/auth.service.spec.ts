@@ -1,8 +1,7 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthService } from './auth.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { EmailService } from '../email/email.service';
+import { EmailService } from '../../../support/src/email/email.service';
 import { JwtService } from '@nestjs/jwt';
 import {
   BadRequestException,
