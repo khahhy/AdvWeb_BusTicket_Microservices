@@ -1,5 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsOptional, IsObject } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsObject,
+  IsNumber,
+} from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class ChatMessageDto {
   @ApiProperty({
@@ -94,4 +101,24 @@ export class ChatResponseDto {
     required: false,
   })
   suggestions?: string[];
+}
+
+export class ConfirmPaymentDto {
+  @ApiProperty({
+    description: 'Payment order code from PayOS',
+    example: 123456,
+  })
+  @IsNotEmpty()
+  @IsNumber()
+  @Type(() => Number)
+  orderCode: number;
+
+  @ApiProperty({
+    description: 'Optional session ID for tracking conversation context',
+    example: 'session-abc123',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  sessionId?: string;
 }

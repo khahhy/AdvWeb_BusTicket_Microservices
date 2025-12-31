@@ -646,8 +646,8 @@ Keep it brief and conversational.
       // Check payment status via Payment service
       const paymentStatus = await firstValueFrom(
         this.paymentClient.send(
-          { cmd: 'check_payment_by_order_code' },
-          { orderCode },
+          { cmd: 'check_payment_status_by_order_code' },
+          orderCode,
         ),
       );
 

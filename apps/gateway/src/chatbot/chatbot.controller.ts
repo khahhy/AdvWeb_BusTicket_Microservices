@@ -7,9 +7,18 @@ import {
   Inject,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+} from '@nestjs/swagger';
 import { firstValueFrom } from 'rxjs';
-import { ChatMessageDto, ChatResponseDto } from '@app/shared/dto';
+import {
+  ChatMessageDto,
+  ChatResponseDto,
+  ConfirmPaymentDto,
+} from '@app/shared/dto';
 
 @ApiTags('Chatbot')
 @Controller('chatbot')
@@ -40,18 +49,71 @@ export class ChatbotController {
   }
 
   @Post('confirm-payment')
-  @ApiOperation({ summary: 'Confirm payment for a booking' })
+  @ApiOperation({
+    summary: 'Confirm payment status for a booking',
+    description:
+      'Check payment status by order code and return chatbot-friendly response',
+  })
+  @ApiBody({
+    type: ConfirmPaymentDto,
+    description: 'Payment confirmation request',
+    examples: {
+      example1: {
+        summary: 'Confirm payment',
+        value: {
+          orderCode: 123456,
+          sessionId: 'session-abc123',
+        },
+      },
+    },
+  })
   @ApiResponse({
     status: 200,
     description: 'Payment confirmation response',
     type: ChatResponseDto,
+    examples: {
+      success: {
+        summary: 'Payment successful',
+        value: {
+          message:
+            'Thanh toán thành công!\n\nVé điện tử đã được gửi qua email.\nMã đơn hàng: 123456\nSố tiền: 500,000 VND',
+          type: 'payment_success',
+          data: {
+            orderCode: 123456,
+            amount: 500000,
+            status: 'successful',
+          },
+          suggestions: ['Xem vé của tôi', 'Tìm chuyến mới'],
+        },
+      },
+      pending: {
+        summary: 'Payment pending',
+        value: {
+          message: 'Thanh toán đang chờ xử lý...\n\nMã đơn hàng: 123456',
+          type: 'payment_pending',
+          data: {
+            orderCode: 123456,
+            status: 'pending',
+          },
+          suggestions: ['Kiểm tra lại', 'Cần hỗ trợ'],
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Payment not found',
+  })
+  @ApiResponse({
+    status: 500,
+    description: 'Internal server error',
   })
   async confirmPayment(
-    @Body() body: { sessionId: string; orderCode: string },
+    @Body() dto: ConfirmPaymentDto,
   ): Promise<ChatResponseDto> {
     try {
       const response = await firstValueFrom(
-        this.supportClient.send({ cmd: 'confirm_payment' }, body),
+        this.supportClient.send({ cmd: 'confirm_payment' }, dto.orderCode),
       );
       return response;
     } catch (error) {

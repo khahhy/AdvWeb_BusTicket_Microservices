@@ -20,9 +20,7 @@ export class ChatbotController {
   }
 
   @MessagePattern({ cmd: 'confirm_payment' })
-  async confirmPayment(
-    @Payload() data: { orderCode: number },
-  ): Promise<ChatResponseDto> {
-    return await this.chatbotService.confirmPayment(data.orderCode);
+  async confirmPayment(@Payload() orderCode: number): Promise<ChatResponseDto> {
+    return await this.chatbotService.confirmPayment(orderCode);
   }
 }
