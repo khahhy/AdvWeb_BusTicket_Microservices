@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthService } from './auth.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -15,9 +16,6 @@ jest.mock('bcrypt');
 
 describe('AuthService', () => {
   let service: AuthService;
-  let prismaService: PrismaService;
-  let emailService: EmailService;
-  let jwtService: JwtService;
 
   const mockPrismaService = {
     users: {
@@ -57,9 +55,6 @@ describe('AuthService', () => {
     }).compile();
 
     service = module.get<AuthService>(AuthService);
-    prismaService = module.get<PrismaService>(PrismaService);
-    emailService = module.get<EmailService>(EmailService);
-    jwtService = module.get<JwtService>(JwtService);
 
     // Clear all mocks before each test
     jest.clearAllMocks();
@@ -335,7 +330,7 @@ describe('AuthService', () => {
         data: expect.objectContaining({
           emailVerified: true,
           status: 'active',
-        }),
+        }) as Record<string, unknown>,
       });
     });
 
@@ -543,7 +538,7 @@ describe('AuthService', () => {
       expect(result).toEqual(mockUser);
       expect(mockPrismaService.users.findUnique).toHaveBeenCalledWith({
         where: { id: userId },
-        select: expect.any(Object),
+        select: expect.any(Object) as Record<string, unknown>,
       });
     });
 

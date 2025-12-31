@@ -6,8 +6,6 @@ import { CreateBookingDto } from '@app/shared/dto';
 
 describe('BookingOrchestrator', () => {
   let orchestrator: BookingOrchestrator;
-  let bookingClient: ClientProxy;
-  let paymentClient: ClientProxy;
 
   const mockBookingClient = {
     send: jest.fn(),
@@ -80,9 +78,8 @@ describe('BookingOrchestrator', () => {
       mockBookingClient.send.mockReturnValueOnce(of(mockBookingResult));
       mockPaymentClient.send.mockReturnValueOnce(of(mockPaymentResult));
 
-      const result = await orchestrator.createBookingWithPayment(
-        createBookingDto,
-      );
+      const result =
+        await orchestrator.createBookingWithPayment(createBookingDto);
 
       expect(result.message).toBe(
         'Booking and payment orchestrated successfully',
@@ -184,10 +181,7 @@ describe('BookingOrchestrator', () => {
         throwError(() => new Error('Cancellation failed')),
       );
 
-      const loggerErrorSpy = jest.spyOn(
-        orchestrator['logger'],
-        'error',
-      );
+      const loggerErrorSpy = jest.spyOn(orchestrator['logger'], 'error');
 
       await expect(
         orchestrator.createBookingWithPayment(createBookingDto),
@@ -293,15 +287,10 @@ describe('BookingOrchestrator', () => {
       const bookingIds = ['booking-1', 'booking-2'];
 
       mockBookingClient.send
-        .mockReturnValueOnce(
-          throwError(() => new Error('Cancellation failed')),
-        )
+        .mockReturnValueOnce(throwError(() => new Error('Cancellation failed')))
         .mockReturnValueOnce(of({ message: 'Booking cancelled' }));
 
-      const loggerErrorSpy = jest.spyOn(
-        orchestrator['logger'],
-        'error',
-      );
+      const loggerErrorSpy = jest.spyOn(orchestrator['logger'], 'error');
 
       const result = await orchestrator.handlePaymentFailure(bookingIds);
 

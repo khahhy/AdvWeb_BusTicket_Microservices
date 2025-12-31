@@ -21,13 +21,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { firstValueFrom } from 'rxjs';
-import {
-  CreateReviewDto,
-  ModerateReviewDto,
-  ReviewResponseDto,
-  ReviewListResponseDto,
-  AdminReviewListResponseDto,
-} from '@app/shared/dto';
+import { CreateReviewDto, ModerateReviewDto } from '@app/shared/dto';
 import {
   JwtAuthGuard,
   RolesGuard,
@@ -55,18 +49,20 @@ export class ReviewsController {
   async create(
     @Req() req: RequestWithUser,
     @Body() createReviewDto: CreateReviewDto,
-  ) {
+  ): Promise<unknown> {
     try {
-      return await firstValueFrom(
+      const result: unknown = await firstValueFrom(
         this.bookingClient.send(
           { cmd: 'create_review' },
           { userId: req.user.userId, dto: createReviewDto },
         ),
       );
+      return result;
     } catch (error) {
+      const err = error as { message?: string; status?: number };
       throw new HttpException(
-        error.message || 'Failed to create review',
-        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
+        err.message || 'Failed to create review',
+        err.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -81,18 +77,20 @@ export class ReviewsController {
   async findByBooking(
     @Param('bookingId') bookingId: string,
     @Req() req: RequestWithUser,
-  ) {
+  ): Promise<unknown> {
     try {
-      return await firstValueFrom(
+      const result: unknown = await firstValueFrom(
         this.bookingClient.send(
           { cmd: 'find_review_by_booking' },
           { bookingId, userId: req.user.userId },
         ),
       );
+      return result;
     } catch (error) {
+      const err = error as { message?: string; status?: number };
       throw new HttpException(
-        error.message || 'Failed to fetch review',
-        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
+        err.message || 'Failed to fetch review',
+        err.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -102,18 +100,20 @@ export class ReviewsController {
   @ApiOperation({ summary: 'Get all reviews by current user' })
   @ApiResponse({ status: 200, description: 'Fetched reviews successfully.' })
   @Get('my')
-  async findMyReviews(@Req() req: RequestWithUser) {
+  async findMyReviews(@Req() req: RequestWithUser): Promise<unknown> {
     try {
-      return await firstValueFrom(
+      const result: unknown = await firstValueFrom(
         this.bookingClient.send(
           { cmd: 'find_reviews_by_user' },
           req.user.userId,
         ),
       );
+      return result;
     } catch (error) {
+      const err = error as { message?: string; status?: number };
       throw new HttpException(
-        error.message || 'Failed to fetch reviews',
-        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
+        err.message || 'Failed to fetch reviews',
+        err.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -124,15 +124,17 @@ export class ReviewsController {
   @ApiOperation({ summary: 'Admin: Get all reviews for moderation' })
   @ApiResponse({ status: 200, description: 'Fetched reviews successfully.' })
   @Get('admin')
-  async findAllForAdmin() {
+  async findAllForAdmin(): Promise<unknown> {
     try {
-      return await firstValueFrom(
+      const result: unknown = await firstValueFrom(
         this.bookingClient.send({ cmd: 'find_all_reviews_admin' }, {}),
       );
+      return result;
     } catch (error) {
+      const err = error as { message?: string; status?: number };
       throw new HttpException(
-        error.message || 'Failed to fetch reviews',
-        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
+        err.message || 'Failed to fetch reviews',
+        err.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -147,18 +149,20 @@ export class ReviewsController {
     @Param('id') id: string,
     @Body() dto: ModerateReviewDto,
     @Req() req: RequestWithUser,
-  ) {
+  ): Promise<unknown> {
     try {
-      return await firstValueFrom(
+      const result: unknown = await firstValueFrom(
         this.bookingClient.send(
           { cmd: 'moderate_review' },
           { reviewId: id, adminId: req.user.userId, status: dto.status },
         ),
       );
+      return result;
     } catch (error) {
+      const err = error as { message?: string; status?: number };
       throw new HttpException(
-        error.message || 'Failed to moderate review',
-        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
+        err.message || 'Failed to moderate review',
+        err.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -169,15 +173,17 @@ export class ReviewsController {
   @ApiOperation({ summary: 'Admin: Delete a review' })
   @ApiResponse({ status: 200, description: 'Review deleted successfully.' })
   @Delete(':id')
-  async removeReview(@Param('id') id: string) {
+  async removeReview(@Param('id') id: string): Promise<unknown> {
     try {
-      return await firstValueFrom(
+      const result: unknown = await firstValueFrom(
         this.bookingClient.send({ cmd: 'delete_review' }, id),
       );
+      return result;
     } catch (error) {
+      const err = error as { message?: string; status?: number };
       throw new HttpException(
-        error.message || 'Failed to delete review',
-        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
+        err.message || 'Failed to delete review',
+        err.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }

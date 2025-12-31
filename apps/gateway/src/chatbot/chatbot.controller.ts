@@ -7,12 +7,7 @@ import {
   Inject,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiBody,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { firstValueFrom } from 'rxjs';
 import {
   ChatMessageDto,
@@ -36,14 +31,15 @@ export class ChatbotController {
   })
   async chat(@Body() chatMessageDto: ChatMessageDto): Promise<ChatResponseDto> {
     try {
-      const response = await firstValueFrom(
+      const response: ChatResponseDto = await firstValueFrom(
         this.supportClient.send({ cmd: 'chat' }, chatMessageDto),
       );
       return response;
     } catch (error) {
+      const err = error as { message?: string; status?: number };
       throw new HttpException(
-        error.message || 'Failed to process chat message',
-        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
+        err.message || 'Failed to process chat message',
+        err.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -112,14 +108,15 @@ export class ChatbotController {
     @Body() dto: ConfirmPaymentDto,
   ): Promise<ChatResponseDto> {
     try {
-      const response = await firstValueFrom(
+      const response: ChatResponseDto = await firstValueFrom(
         this.supportClient.send({ cmd: 'confirm_payment' }, dto.orderCode),
       );
       return response;
     } catch (error) {
+      const err = error as { message?: string; status?: number };
       throw new HttpException(
-        error.message || 'Failed to confirm payment',
-        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
+        err.message || 'Failed to confirm payment',
+        err.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }

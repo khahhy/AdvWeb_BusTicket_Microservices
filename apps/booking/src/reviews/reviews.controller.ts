@@ -1,7 +1,7 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { ReviewsService } from './reviews.service';
-import { CreateReviewDto, ModerateReviewDto } from '@app/shared/dto';
+import { CreateReviewDto } from '@app/shared/dto';
 import { ReviewStatus } from '@app/shared/enums';
 
 @Controller()
@@ -9,16 +9,12 @@ export class ReviewsController {
   constructor(private readonly reviewsService: ReviewsService) {}
 
   @MessagePattern({ cmd: 'create_review' })
-  async create(
-    @Payload() data: { userId: string; dto: CreateReviewDto },
-  ) {
+  async create(@Payload() data: { userId: string; dto: CreateReviewDto }) {
     return this.reviewsService.create(data.userId, data.dto);
   }
 
   @MessagePattern({ cmd: 'find_review_by_booking' })
-  async findByBooking(
-    @Payload() data: { bookingId: string; userId: string },
-  ) {
+  async findByBooking(@Payload() data: { bookingId: string; userId: string }) {
     return this.reviewsService.findByBooking(data.bookingId, data.userId);
   }
 

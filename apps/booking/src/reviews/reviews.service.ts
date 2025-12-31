@@ -57,7 +57,7 @@ export class ReviewsService {
       throw new ForbiddenException('You can only review your own booking');
     }
 
-    if (booking.status !== BookingStatus.confirmed) {
+    if (booking.status !== (BookingStatus.confirmed as string)) {
       throw new BadRequestException('Only confirmed bookings can be reviewed');
     }
 
@@ -133,12 +133,16 @@ export class ReviewsService {
 
     // Transform to match admin format
     const data = reviews.map((review) => {
-      const customerInfo = review.booking?.customerInfo as any;
+      const customerInfo = review.booking?.customerInfo as {
+        fullName?: string;
+        email?: string;
+      } | null;
       return {
         id: review.id,
         bookingId: review.bookingId,
         userId: review.userId,
-        userName: customerInfo?.fullName || customerInfo?.email || 'Unknown Passenger',
+        userName:
+          customerInfo?.fullName || customerInfo?.email || 'Unknown Passenger',
         routeName: 'Route Info Not Available', // You may need to join route data
         tripDate: new Date().toISOString(), // You may need to join trip data
         rating: review.rating,

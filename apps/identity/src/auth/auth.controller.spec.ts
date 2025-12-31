@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/unbound-method */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
@@ -64,8 +67,8 @@ describe('AuthController', () => {
 
       const result = await controller.signUp(signUpDto);
 
-      expect(void authService.signUp).toHaveBeenCalledWith(signUpDto);
-      expect(void authService.signUp).toHaveBeenCalledTimes(1);
+      expect(authService.signUp).toHaveBeenCalledWith(signUpDto);
+      expect(authService.signUp).toHaveBeenCalledTimes(1);
       expect(result).toEqual(expectedResult);
     });
   });
@@ -94,8 +97,8 @@ describe('AuthController', () => {
 
       const result = await controller.signIn(signInDto);
 
-      expect(void authService.signIn).toHaveBeenCalledWith(signInDto);
-      expect(void authService.signIn).toHaveBeenCalledTimes(1);
+      expect(authService.signIn).toHaveBeenCalledWith(signInDto);
+      expect(authService.signIn).toHaveBeenCalledTimes(1);
       expect(result).toEqual(expectedResult);
     });
   });
@@ -113,8 +116,8 @@ describe('AuthController', () => {
 
       const result = await controller.verifyEmail(token);
 
-      expect(void authService.verifyEmail).toHaveBeenCalledWith(token);
-      expect(void authService.verifyEmail).toHaveBeenCalledTimes(1);
+      expect(authService.verifyEmail).toHaveBeenCalledWith(token);
+      expect(authService.verifyEmail).toHaveBeenCalledTimes(1);
       expect(result).toEqual(expectedResult);
     });
   });
@@ -131,10 +134,8 @@ describe('AuthController', () => {
 
       const result = await controller.resendVerification(email);
 
-      expect(void authService.resendVerificationEmail).toHaveBeenCalledWith(
-        email,
-      );
-      expect(void authService.resendVerificationEmail).toHaveBeenCalledTimes(1);
+      expect(authService.resendVerificationEmail).toHaveBeenCalledWith(email);
+      expect(authService.resendVerificationEmail).toHaveBeenCalledTimes(1);
       expect(result).toEqual(expectedResult);
     });
   });
@@ -154,10 +155,10 @@ describe('AuthController', () => {
 
       const result = await controller.forgotPassword(forgotPasswordDto);
 
-      expect(void authService.forgotPassword).toHaveBeenCalledWith(
+      expect(authService.forgotPassword).toHaveBeenCalledWith(
         forgotPasswordDto.email,
       );
-      expect(void authService.forgotPassword).toHaveBeenCalledTimes(1);
+      expect(authService.forgotPassword).toHaveBeenCalledTimes(1);
       expect(result).toEqual(expectedResult);
     });
   });
@@ -178,11 +179,11 @@ describe('AuthController', () => {
 
       const result = await controller.resetPassword(resetPasswordDto);
 
-      expect(void authService.resetPassword).toHaveBeenCalledWith(
+      expect(authService.resetPassword).toHaveBeenCalledWith(
         resetPasswordDto.token,
         resetPasswordDto.newPassword,
       );
-      expect(void authService.resetPassword).toHaveBeenCalledTimes(1);
+      expect(authService.resetPassword).toHaveBeenCalledTimes(1);
       expect(result).toEqual(expectedResult);
     });
   });
@@ -218,7 +219,7 @@ describe('AuthController', () => {
 
       await controller.googleAuthCallback(mockReq, mockRes);
 
-      expect(void authService.googleLogin).toHaveBeenCalledWith(mockReq.user);
+      expect(authService.googleLogin).toHaveBeenCalledWith(mockReq.user);
       expect(mockRes.redirect).toHaveBeenCalledWith(
         `${process.env.FRONTEND_URL}/auth-success?token=${expectedAuthResult.accessToken}`,
       );
@@ -251,9 +252,7 @@ describe('AuthController', () => {
 
       const result = await controller.getCurrentUser(mockReq);
 
-      expect(void authService.getUserById).toHaveBeenCalledWith(
-        mockReq.user.userId,
-      );
+      expect(authService.getUserById).toHaveBeenCalledWith(mockReq.user.userId);
       expect(result).toEqual(expectedResult);
     });
   });
@@ -284,9 +283,7 @@ describe('AuthController', () => {
 
       const result = await controller.getProfile(mockReq);
 
-      expect(void authService.getUserById).toHaveBeenCalledWith(
-        mockReq.user.userId,
-      );
+      expect(authService.getUserById).toHaveBeenCalledWith(mockReq.user.userId);
       expect(result).toEqual(expectedResult);
     });
   });
@@ -322,7 +319,7 @@ describe('AuthController', () => {
 
       const result = await controller.updateProfile(mockReq, updateProfileDto);
 
-      expect(void authService.updateProfile).toHaveBeenCalledWith(
+      expect(authService.updateProfile).toHaveBeenCalledWith(
         mockReq.user.userId,
         updateProfileDto,
       );

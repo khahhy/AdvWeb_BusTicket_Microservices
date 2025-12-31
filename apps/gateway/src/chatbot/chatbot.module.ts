@@ -12,8 +12,12 @@ import { ChatbotController } from './chatbot.controller';
         useFactory: (configService: ConfigService) => ({
           transport: Transport.TCP,
           options: {
-            host: configService.get('SUPPORT_SERVICE_HOST') || 'localhost',
-            port: parseInt(configService.get('SUPPORT_SERVICE_PORT') || '3002'),
+            host:
+              configService.get<string>('SUPPORT_SERVICE_HOST') || 'localhost',
+            port: parseInt(
+              configService.get<string>('SUPPORT_SERVICE_PORT') || '3002',
+              10,
+            ),
           },
         }),
         inject: [ConfigService],
