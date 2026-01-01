@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
@@ -24,46 +24,69 @@ import { HealthModule } from './health/health.module';
       envFilePath: '.env',
     }),
 
-    ClientsModule.register([
+    ClientsModule.registerAsync([
       {
         name: 'IDENTITY_SERVICE',
-        transport: Transport.TCP,
-        options: {
-          host: 'localhost',
-          port: 3001,
-        },
+        imports: [ConfigModule],
+        useFactory: (configService: ConfigService) => ({
+          transport: Transport.TCP,
+          options: {
+            host:
+              configService.get<string>('IDENTITY_SERVICE_HOST') || 'localhost',
+            port: configService.get<number>('IDENTITY_SERVICE_PORT') || 3001,
+          },
+        }),
       },
       {
         name: 'SUPPORT_SERVICE',
-        transport: Transport.TCP,
-        options: {
-          host: 'localhost',
-          port: 3002,
-        },
+        imports: [ConfigModule],
+        useFactory: (configService: ConfigService) => ({
+          transport: Transport.TCP,
+          options: {
+            host:
+              configService.get<string>('SUPPORT_SERVICE_HOST') || 'localhost',
+            port: configService.get<number>('SUPPORT_SERVICE_PORT') || 3002,
+          },
+        }),
+        inject: [ConfigService],
       },
       {
         name: 'TRIP_SERVICE',
-        transport: Transport.TCP,
-        options: {
-          host: 'localhost',
-          port: 3003,
-        },
+        imports: [ConfigModule],
+        useFactory: (configService: ConfigService) => ({
+          transport: Transport.TCP,
+          options: {
+            host: configService.get<string>('TRIP_SERVICE_HOST') || 'localhost',
+            port: configService.get<number>('TRIP_SERVICE_PORT') || 3003,
+          },
+        }),
+        inject: [ConfigService],
       },
       {
         name: 'BOOKING_SERVICE',
-        transport: Transport.TCP,
-        options: {
-          host: 'localhost',
-          port: 3004,
-        },
+        imports: [ConfigModule],
+        useFactory: (configService: ConfigService) => ({
+          transport: Transport.TCP,
+          options: {
+            host:
+              configService.get<string>('BOOKING_SERVICE_HOST') || 'localhost',
+            port: configService.get<number>('BOOKING_SERVICE_PORT') || 3004,
+          },
+        }),
+        inject: [ConfigService],
       },
       {
         name: 'PAYMENT_SERVICE',
-        transport: Transport.TCP,
-        options: {
-          host: 'localhost',
-          port: 3005,
-        },
+        imports: [ConfigModule],
+        useFactory: (configService: ConfigService) => ({
+          transport: Transport.TCP,
+          options: {
+            host:
+              configService.get<string>('PAYMENT_SERVICE_HOST') || 'localhost',
+            port: configService.get<number>('PAYMENT_SERVICE_PORT') || 3005,
+          },
+        }),
+        inject: [ConfigService],
       },
     ]),
     SharedAuthModule,
