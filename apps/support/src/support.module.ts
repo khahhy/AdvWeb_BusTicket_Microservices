@@ -1,6 +1,6 @@
 import { Module, DynamicModule } from '@nestjs/common';
 import { ClientsModule, Transport } from '@nestjs/microservices';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { EmailModule } from './email/email.module';
 import { ActivityLogsModule } from './activity-logs/activity-logs.module';
@@ -16,14 +16,20 @@ import { HealthModule } from './health/health.module';
       envFilePath: ['.env', 'apps/support/.env'],
     }),
     ScheduleModule.forRoot() as unknown as DynamicModule,
-    ClientsModule.register([
+
+    ClientsModule.registerAsync([
       {
         name: 'BOOKING_SERVICE',
-        transport: Transport.TCP,
-        options: {
-          host: 'localhost',
-          port: 3004,
-        },
+        imports: [ConfigModule],
+        useFactory: (configService: ConfigService) => ({
+          transport: Transport.TCP,
+          options: {
+            host:
+              configService.get<string>('BOOKING_SERVICE_HOST') || 'localhost',
+            port: configService.get<number>('BOOKING_SERVICE_PORT') || 3004,
+          },
+        }),
+        inject: [ConfigService],
       },
     ]),
     PrismaModule,

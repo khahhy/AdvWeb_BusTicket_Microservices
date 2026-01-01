@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { UserService } from './user.service';
 import { UserController } from './user.controller';
@@ -9,22 +10,32 @@ import { RedisCacheModule } from '@app/shared';
   imports: [
     PrismaModule,
     RedisCacheModule,
-    ClientsModule.register([
+    ClientsModule.registerAsync([
       {
         name: 'SUPPORT_SERVICE',
-        transport: Transport.TCP,
-        options: {
-          host: 'localhost',
-          port: 3002, // port Support
-        },
+        imports: [ConfigModule],
+        useFactory: (configService: ConfigService) => ({
+          transport: Transport.TCP,
+          options: {
+            host:
+              configService.get<string>('SUPPORT_SERVICE_HOST') || 'localhost',
+            port: configService.get<number>('SUPPORT_SERVICE_PORT') || 3002,
+          },
+        }),
+        inject: [ConfigService],
       },
       {
         name: 'BOOKING_SERVICE',
-        transport: Transport.TCP,
-        options: {
-          host: 'localhost',
-          port: 3004, // port Support
-        },
+        imports: [ConfigModule],
+        useFactory: (configService: ConfigService) => ({
+          transport: Transport.TCP,
+          options: {
+            host:
+              configService.get<string>('BOOKING_SERVICE_HOST') || 'localhost',
+            port: configService.get<number>('BOOKING_SERVICE_PORT') || 3004,
+          },
+        }),
+        inject: [ConfigService],
       },
     ]),
   ],

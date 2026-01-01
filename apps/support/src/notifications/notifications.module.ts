@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { NotificationsService } from './notifications.service';
 import { NotificationsController } from './notifications.controller';
@@ -11,30 +12,45 @@ import { EmailService } from '../email/email.service';
 @Module({
   imports: [
     PrismaModule,
-    ClientsModule.register([
+    ClientsModule.registerAsync([
       {
         name: 'IDENTITY_SERVICE',
-        transport: Transport.TCP,
-        options: {
-          host: 'localhost',
-          port: 3001, // port Identity
-        },
+        imports: [ConfigModule],
+        useFactory: (configService: ConfigService) => ({
+          transport: Transport.TCP,
+          options: {
+            host:
+              configService.get<string>('IDENTITY_SERVICE_HOST') || 'localhost',
+            port: configService.get<number>('IDENTITY_SERVICE_PORT') || 3001,
+          },
+        }),
+        inject: [ConfigService],
       },
       {
         name: 'SUPPORT_SERVICE',
-        transport: Transport.TCP,
-        options: {
-          host: 'localhost',
-          port: 3002, // port Identity
-        },
+        imports: [ConfigModule],
+        useFactory: (configService: ConfigService) => ({
+          transport: Transport.TCP,
+          options: {
+            host:
+              configService.get<string>('SUPPORT_SERVICE_HOST') || 'localhost',
+            port: configService.get<number>('SUPPORT_SERVICE_PORT') || 3002,
+          },
+        }),
+        inject: [ConfigService],
       },
       {
         name: 'BOOKING_SERVICE',
-        transport: Transport.TCP,
-        options: {
-          host: 'localhost',
-          port: 3004,
-        },
+        imports: [ConfigModule],
+        useFactory: (configService: ConfigService) => ({
+          transport: Transport.TCP,
+          options: {
+            host:
+              configService.get<string>('BOOKING_SERVICE_HOST') || 'localhost',
+            port: configService.get<number>('BOOKING_SERVICE_PORT') || 3004,
+          },
+        }),
+        inject: [ConfigService],
       },
     ]),
   ],
