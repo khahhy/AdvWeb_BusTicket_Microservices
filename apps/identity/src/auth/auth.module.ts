@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
@@ -11,14 +12,19 @@ import { SharedAuthModule } from '@app/shared';
   imports: [
     PrismaModule,
     SharedAuthModule,
-    ClientsModule.register([
+    ClientsModule.registerAsync([
       {
         name: 'SUPPORT_SERVICE',
-        transport: Transport.TCP,
-        options: {
-          host: 'localhost',
-          port: 3002, // port Support
-        },
+        imports: [ConfigModule],
+        useFactory: (configService: ConfigService) => ({
+          transport: Transport.TCP,
+          options: {
+            host:
+              configService.get<string>('SUPPORT_SERVICE_HOST') || 'localhost',
+            port: configService.get<number>('SUPPORT_SERVICE_PORT') || 3002,
+          },
+        }),
+        inject: [ConfigService],
       },
     ]),
   ],

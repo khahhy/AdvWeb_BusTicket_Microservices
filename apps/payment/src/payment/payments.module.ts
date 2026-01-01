@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { PaymentController } from './payment.controller';
 import { PaymentService } from './payment.service';
@@ -9,41 +9,63 @@ import { PayOSModule } from '../payos/payos.module';
 
 @Module({
   imports: [
-    ConfigModule,
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: 'apps/payment/.env',
+    }),
     PrismaModule,
     PayOSModule,
-    ClientsModule.register([
+    ClientsModule.registerAsync([
       {
         name: 'IDENTITY_SERVICE',
-        transport: Transport.TCP,
-        options: {
-          host: process.env.IDENTITY_SERVICE_HOST || 'localhost',
-          port: Number(process.env.IDENTITY_SERVICE_PORT) || 3001,
-        },
+        imports: [ConfigModule],
+        useFactory: (configService: ConfigService) => ({
+          transport: Transport.TCP,
+          options: {
+            host:
+              configService.get<string>('IDENTITY_SERVICE_HOST') || 'localhost',
+            port: configService.get<number>('IDENTITY_SERVICE_PORT') || 3001,
+          },
+        }),
+        inject: [ConfigService],
       },
       {
         name: 'BOOKING_SERVICE',
-        transport: Transport.TCP,
-        options: {
-          host: process.env.BOOKING_SERVICE_HOST || 'localhost',
-          port: Number(process.env.BOOKING_SERVICE_PORT) || 3004,
-        },
+        imports: [ConfigModule],
+        useFactory: (configService: ConfigService) => ({
+          transport: Transport.TCP,
+          options: {
+            host:
+              configService.get<string>('BOOKING_SERVICE_HOST') || 'localhost',
+            port: configService.get<number>('BOOKING_SERVICE_PORT') || 3004,
+          },
+        }),
+        inject: [ConfigService],
       },
       {
         name: 'SUPPORT_SERVICE',
-        transport: Transport.TCP,
-        options: {
-          host: process.env.SUPPORT_SERVICE_HOST || 'localhost',
-          port: Number(process.env.SUPPORT_SERVICE_PORT) || 3002,
-        },
+        imports: [ConfigModule],
+        useFactory: (configService: ConfigService) => ({
+          transport: Transport.TCP,
+          options: {
+            host:
+              configService.get<string>('SUPPORT_SERVICE_HOST') || 'localhost',
+            port: configService.get<number>('SUPPORT_SERVICE_PORT') || 3002,
+          },
+        }),
+        inject: [ConfigService],
       },
       {
         name: 'TRIP_SERVICE',
-        transport: Transport.TCP,
-        options: {
-          host: process.env.TRIP_SERVICE_HOST || 'localhost',
-          port: Number(process.env.TRIP_SERVICE_PORT) || 3003,
-        },
+        imports: [ConfigModule],
+        useFactory: (configService: ConfigService) => ({
+          transport: Transport.TCP,
+          options: {
+            host: configService.get<string>('TRIP_SERVICE_HOST') || 'localhost',
+            port: configService.get<number>('TRIP_SERVICE_PORT') || 3003,
+          },
+        }),
+        inject: [ConfigService],
       },
     ]),
   ],
