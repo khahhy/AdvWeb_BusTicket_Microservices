@@ -198,4 +198,44 @@ export class ReviewsService {
 
     return { message: 'Review deleted successfully' };
   }
+
+  async findByRoute(routeId: string) {
+    const reviews = await this.prisma.reviews.findMany({
+      where: {
+        booking: {
+          routeId: routeId,
+        },
+        status: ReviewStatus.visible, // Only show visible reviews
+      },
+      include: {
+        booking: {
+          select: {
+            customerInfo: true,
+            tripId: true,
+            routeId: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 50, // Limit to latest 50 reviews
+    });
+
+    const data = reviews.map((review) => {
+      const customerInfo = review.booking?.customerInfo as {
+        fullName?: string;
+        email?: string;
+      } | null;
+      return {
+        id: review.id,
+        userId: review.userId,
+        userName:
+          customerInfo?.fullName || customerInfo?.email || 'Anonymous User',
+        rating: review.rating,
+        comment: review.comment ?? '',
+        createdAt: review.createdAt.toISOString(),
+      };
+    });
+
+    return { message: 'Fetched reviews successfully', data };
+  }
 }

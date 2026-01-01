@@ -1,10 +1,13 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, Logger } from '@nestjs/common';
 import { Transport, MicroserviceOptions } from '@nestjs/microservices';
 import { HttpToRpcExceptionFilter } from '@app/shared';
 import { TripModule } from './trip.module';
 
 async function bootstrap() {
+  const logger = new Logger('TripMain');
+  logger.log('Starting Trip Microservice...');
+
   const app = await NestFactory.createMicroservice<MicroserviceOptions>(
     TripModule,
     {
@@ -25,6 +28,7 @@ async function bootstrap() {
   app.useGlobalFilters(new HttpToRpcExceptionFilter());
 
   await app.listen();
-  console.log('Trip Microservice is listening on port 3003');
+  logger.log('Trip Microservice is listening on port 3003');
+  logger.log('Trip Microservice is ready to accept connections');
 }
 void bootstrap();

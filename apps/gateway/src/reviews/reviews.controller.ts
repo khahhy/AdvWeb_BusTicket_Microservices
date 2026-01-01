@@ -187,4 +187,23 @@ export class ReviewsController {
       );
     }
   }
+
+  @ApiOperation({ summary: 'Get all visible reviews for a route' })
+  @ApiParam({ name: 'routeId', description: 'Route ID' })
+  @ApiResponse({ status: 200, description: 'Fetched reviews successfully.' })
+  @Get('route/:routeId')
+  async findByRoute(@Param('routeId') routeId: string): Promise<unknown> {
+    try {
+      const result: unknown = await firstValueFrom(
+        this.bookingClient.send({ cmd: 'find_reviews_by_route' }, routeId),
+      );
+      return result;
+    } catch (error) {
+      const err = error as { message?: string; status?: number };
+      throw new HttpException(
+        err.message || 'Failed to fetch reviews',
+        err.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 }

@@ -15,6 +15,8 @@ import { GeminiService } from './gemini.service';
         options: {
           host: process.env.TRIP_SERVICE_HOST || 'localhost',
           port: parseInt(process.env.TRIP_SERVICE_PORT || '3003'),
+          retryAttempts: 5,
+          retryDelay: 1000,
         },
       },
       {
@@ -23,6 +25,8 @@ import { GeminiService } from './gemini.service';
         options: {
           host: process.env.BOOKING_SERVICE_HOST || 'localhost',
           port: parseInt(process.env.BOOKING_SERVICE_PORT || '3004'),
+          retryAttempts: 5,
+          retryDelay: 1000,
         },
       },
       {
@@ -31,6 +35,8 @@ import { GeminiService } from './gemini.service';
         options: {
           host: process.env.PAYMENT_SERVICE_HOST || 'localhost',
           port: parseInt(process.env.PAYMENT_SERVICE_PORT || '3005'),
+          retryAttempts: 5,
+          retryDelay: 1000,
         },
       },
     ]),

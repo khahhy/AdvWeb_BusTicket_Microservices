@@ -164,28 +164,22 @@ export class NotificationsSchedulerService {
               await this.sendTripReminderEmail(bookingData);
               emailSent = true;
 
-              if (!bookingData.userId) {
-                this.logger.warn(
-                  `User ID is null for booking ${bookingData.ticketCode}, cannot log notification properly.`,
-                );
-              } else {
-                // Create email notification record
-                await this.prisma.notifications.create({
-                  data: {
-                    userId: bookingData.userId,
-                    bookingId: bookingData.id,
-                    type: 'email',
-                    template: 'trip_reminder',
-                    content: `Your trip to ${bookingData.route.destination.name} departs tomorrow at ${bookingData.trip.startTime.toLocaleTimeString()}. Please arrive 30 minutes early.`,
-                    status: 'sent',
-                    sentAt: new Date(),
-                  },
-                });
+              // Create notification record for tracking (works for both guests and authenticated users)
+              await this.prisma.notifications.create({
+                data: {
+                  userId: bookingData.userId,
+                  bookingId: bookingData.id,
+                  type: 'email',
+                  template: 'trip_reminder',
+                  content: `Your trip to ${bookingData.route.destination.name} departs tomorrow at ${bookingData.trip.startTime.toLocaleTimeString()}. Please arrive 30 minutes early.`,
+                  status: 'sent',
+                  sentAt: new Date(),
+                },
+              });
 
-                this.logger.log(
-                  `Email reminder sent for booking ${bookingData.ticketCode}`,
-                );
-              }
+              this.logger.log(
+                `Email reminder sent for booking ${bookingData.ticketCode}${!bookingData.userId ? ' (guest)' : ''}`,
+              );
             } catch (error) {
               this.logger.error(
                 `Failed to send email for booking ${bookingData.ticketCode}:`,
@@ -207,10 +201,10 @@ export class NotificationsSchedulerService {
               if (smsResult.success) {
                 smsSent = true;
 
-                // Create SMS notification record
+                // Create notification record for tracking (works for both guests and authenticated users)
                 await this.prisma.notifications.create({
                   data: {
-                    userId: booking.userId!,
+                    userId: booking.userId,
                     bookingId: booking.id,
                     type: 'sms',
                     template: 'trip_reminder',
@@ -221,7 +215,7 @@ export class NotificationsSchedulerService {
                 });
 
                 this.logger.log(
-                  `SMS reminder sent for booking ${booking.ticketCode}`,
+                  `SMS reminder sent for booking ${booking.ticketCode}${!booking.userId ? ' (guest)' : ''}`,
                 );
               }
             } catch (error) {

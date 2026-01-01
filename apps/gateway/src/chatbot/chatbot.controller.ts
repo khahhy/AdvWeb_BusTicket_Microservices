@@ -5,6 +5,7 @@ import {
   HttpException,
   HttpStatus,
   Inject,
+  Logger,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
@@ -18,6 +19,8 @@ import {
 @ApiTags('Chatbot')
 @Controller('chatbot')
 export class ChatbotController {
+  private readonly logger = new Logger(ChatbotController.name);
+
   constructor(
     @Inject('SUPPORT_SERVICE') private readonly supportClient: ClientProxy,
   ) {}
@@ -31,11 +34,17 @@ export class ChatbotController {
   })
   async chat(@Body() chatMessageDto: ChatMessageDto): Promise<ChatResponseDto> {
     try {
+      this.logger.log(
+        'Sending chat message to Support service:',
+        chatMessageDto.message,
+      );
       const response: ChatResponseDto = await firstValueFrom(
         this.supportClient.send({ cmd: 'chat' }, chatMessageDto),
       );
+      this.logger.log('Received response from Support service');
       return response;
     } catch (error) {
+      this.logger.error('Error in chat:', error);
       const err = error as { message?: string; status?: number };
       throw new HttpException(
         err.message || 'Failed to process chat message',
