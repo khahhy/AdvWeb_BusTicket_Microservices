@@ -17,6 +17,7 @@ import { UserController } from './user.controller';
             port: configService.get<number>('IDENTITY_SERVICE_PORT') || 3001,
           },
         }),
+        inject: [ConfigService],
       },
     ]),
   ],
