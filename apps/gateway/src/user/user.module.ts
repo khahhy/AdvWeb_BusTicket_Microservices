@@ -10,11 +10,10 @@ import { UserController } from './user.controller';
         name: 'IDENTITY_SERVICE',
         imports: [ConfigModule],
         useFactory: (configService: ConfigService) => ({
-          transport: Transport.TCP,
+          transport: Transport.REDIS,
           options: {
-            host:
-              configService.get<string>('IDENTITY_SERVICE_HOST') || 'localhost',
-            port: configService.get<number>('IDENTITY_SERVICE_PORT') || 3001,
+            host: configService.get<string>('REDIS_HOST'),
+            port: configService.get<number>('REDIS_PORT'),
           },
         }),
         inject: [ConfigService],

@@ -9,17 +9,18 @@ async function bootstrap() {
   const appContext = await NestFactory.createApplicationContext(IdentityModule);
   const configService = appContext.get(ConfigService);
 
-  const port = configService.get<number>('IDENTITY_SERVICE_PORT') || 3001;
+  const redisHost = configService.get<string>('REDIS_HOST');
+  const redisPort = configService.get<number>('REDIS_PORT');
 
   await appContext.close();
 
   const app = await NestFactory.createMicroservice<MicroserviceOptions>(
     IdentityModule,
     {
-      transport: Transport.TCP,
+      transport: Transport.REDIS,
       options: {
-        host: '0.0.0.0',
-        port: port,
+        host: redisHost,
+        port: redisPort,
       },
     },
   );
@@ -33,6 +34,5 @@ async function bootstrap() {
   app.useGlobalFilters(new HttpToRpcExceptionFilter());
 
   await app.listen();
-  console.log(`Identity Microservice is listening on port ${port}`);
 }
 void bootstrap();

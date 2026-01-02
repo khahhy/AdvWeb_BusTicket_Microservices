@@ -9,17 +9,18 @@ async function bootstrap() {
   const appContext = await NestFactory.createApplicationContext(PaymentModule);
   const configService = appContext.get(ConfigService);
 
-  const port = configService.get<number>('PAYMENT_SERVICE_PORT') || 3005;
+  const redisHost = configService.get<string>('REDIS_HOST');
+  const redisPort = configService.get<number>('REDIS_PORT');
 
   await appContext.close();
 
   const app = await NestFactory.createMicroservice<MicroserviceOptions>(
     PaymentModule,
     {
-      transport: Transport.TCP,
+      transport: Transport.REDIS,
       options: {
-        host: '0.0.0.0',
-        port: port,
+        host: redisHost,
+        port: redisPort,
       },
     },
   );
@@ -28,6 +29,5 @@ async function bootstrap() {
   app.useGlobalFilters(new HttpToRpcExceptionFilter());
 
   await app.listen();
-  console.log(`Payment Microservice is listening on port ${port}`);
 }
 void bootstrap();

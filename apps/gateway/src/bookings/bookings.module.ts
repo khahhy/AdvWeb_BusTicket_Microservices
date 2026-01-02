@@ -12,11 +12,10 @@ import { PaymentEventsListener } from './payment-events.listener';
         name: 'PAYMENT_SERVICE',
         imports: [ConfigModule],
         useFactory: (configService: ConfigService) => ({
-          transport: Transport.TCP,
+          transport: Transport.REDIS,
           options: {
-            host:
-              configService.get<string>('PAYMENT_SERVICE_HOST') || 'localhost',
-            port: configService.get<number>('PAYMENT_SERVICE_PORT') || 3005,
+            host: configService.get<string>('REDIS_HOST'),
+            port: configService.get<number>('REDIS_PORT'),
           },
         }),
         inject: [ConfigService],
@@ -25,11 +24,10 @@ import { PaymentEventsListener } from './payment-events.listener';
         name: 'BOOKING_SERVICE',
         imports: [ConfigModule],
         useFactory: (configService: ConfigService) => ({
-          transport: Transport.TCP,
+          transport: Transport.REDIS,
           options: {
-            host:
-              configService.get<string>('BOOKING_SERVICE_HOST') || 'localhost',
-            port: configService.get<number>('BOOKING_SERVICE_PORT') || 3004,
+            host: configService.get<string>('REDIS_HOST'),
+            port: configService.get<number>('REDIS_PORT'),
           },
         }),
         inject: [ConfigService],

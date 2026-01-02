@@ -11,11 +11,10 @@ import { HealthController } from './health.controller';
         name: 'IDENTITY_SERVICE',
         imports: [ConfigModule],
         useFactory: (configService: ConfigService) => ({
-          transport: Transport.TCP,
+          transport: Transport.REDIS,
           options: {
-            host:
-              configService.get<string>('IDENTITY_SERVICE_HOST') || 'localhost',
-            port: configService.get<number>('IDENTITY_SERVICE_PORT') || 3001,
+            host: configService.get<string>('REDIS_HOST'),
+            port: configService.get<number>('REDIS_PORT'),
           },
         }),
         inject: [ConfigService],
@@ -24,11 +23,10 @@ import { HealthController } from './health.controller';
         name: 'SUPPORT_SERVICE',
         imports: [ConfigModule],
         useFactory: (configService: ConfigService) => ({
-          transport: Transport.TCP,
+          transport: Transport.REDIS,
           options: {
-            host:
-              configService.get<string>('SUPPORT_SERVICE_HOST') || 'localhost',
-            port: configService.get<number>('SUPPORT_SERVICE_PORT') || 3002,
+            host: configService.get<string>('REDIS_HOST'),
+            port: configService.get<number>('REDIS_PORT'),
           },
         }),
         inject: [ConfigService],
@@ -37,10 +35,10 @@ import { HealthController } from './health.controller';
         name: 'TRIP_SERVICE',
         imports: [ConfigModule],
         useFactory: (configService: ConfigService) => ({
-          transport: Transport.TCP,
+          transport: Transport.REDIS,
           options: {
-            host: configService.get<string>('TRIP_SERVICE_HOST') || 'localhost',
-            port: configService.get<number>('TRIP_SERVICE_PORT') || 3003,
+            host: configService.get<string>('REDIS_HOST'),
+            port: configService.get<number>('REDIS_PORT'),
           },
         }),
         inject: [ConfigService],
@@ -49,11 +47,10 @@ import { HealthController } from './health.controller';
         name: 'BOOKING_SERVICE',
         imports: [ConfigModule],
         useFactory: (configService: ConfigService) => ({
-          transport: Transport.TCP,
+          transport: Transport.REDIS,
           options: {
-            host:
-              configService.get<string>('BOOKING_SERVICE_HOST') || 'localhost',
-            port: configService.get<number>('BOOKING_SERVICE_PORT') || 3004,
+            host: configService.get<string>('REDIS_HOST'),
+            port: configService.get<number>('REDIS_PORT'),
           },
         }),
         inject: [ConfigService],
@@ -62,11 +59,10 @@ import { HealthController } from './health.controller';
         name: 'PAYMENT_SERVICE',
         imports: [ConfigModule],
         useFactory: (configService: ConfigService) => ({
-          transport: Transport.TCP,
+          transport: Transport.REDIS,
           options: {
-            host:
-              configService.get<string>('PAYMENT_SERVICE_HOST') || 'localhost',
-            port: configService.get<number>('PAYMENT_SERVICE_PORT') || 3005,
+            host: configService.get<string>('REDIS_HOST'),
+            port: configService.get<number>('REDIS_PORT'),
           },
         }),
         inject: [ConfigService],
