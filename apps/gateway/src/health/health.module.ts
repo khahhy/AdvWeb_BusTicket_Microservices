@@ -18,6 +18,7 @@ import { HealthController } from './health.controller';
             port: configService.get<number>('IDENTITY_SERVICE_PORT') || 3001,
           },
         }),
+        inject: [ConfigService],
       },
       {
         name: 'SUPPORT_SERVICE',
