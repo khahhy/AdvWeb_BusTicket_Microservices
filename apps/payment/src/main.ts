@@ -6,28 +6,24 @@ import { HttpToRpcExceptionFilter } from '@app/shared';
 import { PaymentModule } from './payment.module';
 
 async function bootstrap() {
-  const appContext = await NestFactory.createApplicationContext(PaymentModule);
-  const configService = appContext.get(ConfigService);
+  const app = await NestFactory.create(PaymentModule);
+  const configService = app.get(ConfigService);
 
-  const redisHost = configService.get<string>('REDIS_HOST');
-  const redisPort = configService.get<number>('REDIS_PORT');
-
-  await appContext.close();
-
-  const app = await NestFactory.createMicroservice<MicroserviceOptions>(
-    PaymentModule,
-    {
-      transport: Transport.REDIS,
-      options: {
-        host: redisHost,
-        port: redisPort,
-      },
+  app.connectMicroservice<MicroserviceOptions>({
+    transport: Transport.REDIS,
+    options: {
+      host: configService.get<string>('REDIS_HOST'),
+      port: configService.get<number>('REDIS_PORT'),
     },
-  );
+  });
 
   app.useGlobalPipes(new ValidationPipe({ transform: true }));
   app.useGlobalFilters(new HttpToRpcExceptionFilter());
 
-  await app.listen();
+  await app.startAllMicroservices();
+
+  const port = configService.get<number>('PORT') || 3005;
+  await app.listen(port);
+  console.log(`Payment Service is running on HTTP:${port} & Redis`);
 }
 void bootstrap();
