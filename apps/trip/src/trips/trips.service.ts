@@ -4,6 +4,7 @@ import {
   NotFoundException,
   InternalServerErrorException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { lastValueFrom } from 'rxjs';
 import { PrismaService } from '../prisma/prisma.service';
@@ -24,6 +25,8 @@ import { normalizeCity } from '@app/shared';
 
 @Injectable()
 export class TripsService {
+  private readonly logger = new Logger(TripsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     @Inject('SUPPORT_SERVICE') private readonly supportClient: ClientProxy,

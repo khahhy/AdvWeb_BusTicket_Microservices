@@ -48,4 +48,9 @@ export class ReviewsController {
   async removeReview(@Payload() reviewId: string) {
     return this.reviewsService.removeReview(reviewId);
   }
+
+  @MessagePattern({ cmd: 'find_reviews_by_route' })
+  async findByRoute(@Payload() routeId: string) {
+    return this.reviewsService.findByRoute(routeId);
+  }
 }

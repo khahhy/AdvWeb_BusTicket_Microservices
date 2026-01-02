@@ -1,4 +1,4 @@
-import { Controller } from '@nestjs/common';
+import { Controller, Logger } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { TripsService } from './trips.service';
 import {
@@ -12,7 +12,11 @@ import { TripStatus } from '@app/shared/enums';
 
 @Controller()
 export class TripsController {
-  constructor(private readonly tripsService: TripsService) {}
+  private readonly logger = new Logger(TripsController.name);
+
+  constructor(private readonly tripsService: TripsService) {
+    this.logger.log('TripsController initialized');
+  }
 
   @MessagePattern({ cmd: 'create_trip' })
   async create(
@@ -42,9 +46,26 @@ export class TripsController {
     return this.tripsService.getUpcomingTrips(limit);
   }
 
+  @MessagePattern({ cmd: 'test_connection' })
+  testConnection() {
+    this.logger.log('Test connection received!');
+    return { status: 'ok', message: 'Connection successful' };
+  }
+
   @MessagePattern({ cmd: 'search_trips' })
   async searchTrips(@Payload() dto: SearchTripDto) {
-    return this.tripsService.searchTrips(dto);
+    this.logger.log(`Received search_trips request:`, dto);
+    try {
+      const result = await this.tripsService.searchTrips(dto);
+      const resultData = result as { data?: unknown[] };
+      this.logger.log(
+        `Search trips result: ${resultData?.data?.length || 0} trips found`,
+      );
+      return result;
+    } catch (error) {
+      this.logger.error(`Error in searchTrips:`, error);
+      throw error;
+    }
   }
 
   @MessagePattern({ cmd: 'get_trip_detail' })

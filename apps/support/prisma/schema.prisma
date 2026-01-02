@@ -10,7 +10,7 @@ datasource db {
 
 model Notifications {
   id        String             @id @default(uuid())
-  userId    String             
+  userId    String?            
   bookingId String?            
   type      NotificationType
   template  String?

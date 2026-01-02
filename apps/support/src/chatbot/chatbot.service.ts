@@ -193,9 +193,10 @@ export class ChatbotService {
       const pendingSearch: PendingSearch = context?.pendingSearch || {};
 
       // Get all locations from Trip service via TCP
-      const locations = await firstValueFrom(
-        this.tripClient.send({ cmd: 'get_all_locations' }, {}),
+      const locationsResponse = await firstValueFrom(
+        this.tripClient.send({ cmd: 'get_locations' }, {}),
       );
+      const locations = locationsResponse?.data || [];
 
       // Build context-aware prompt
       const contextInfo =
@@ -240,22 +241,31 @@ CRITICAL: Return ONLY valid JSON. Use null (not "null" string) for missing value
       }
 
       let searchParams: SearchParams = JSON.parse(jsonMatch[0]) as SearchParams;
+      this.logger.log('Parsed AI response:', searchParams);
 
       // Merge with pending search context
+      const mergedOriginCity =
+        searchParams.originCity || pendingSearch.originCity || null;
+      const mergedDestinationCity =
+        searchParams.destinationCity || pendingSearch.destinationCity || null;
+      const mergedDate = searchParams.date || pendingSearch.date || null;
+      this.logger.log('Merged date:', mergedDate);
+
       searchParams = {
-        originCity: searchParams.originCity || pendingSearch.originCity || null,
-        destinationCity:
-          searchParams.destinationCity || pendingSearch.destinationCity || null,
-        date: searchParams.date || pendingSearch.date || null,
+        originCity: mergedOriginCity
+          ? this.removeVietnameseAccents(mergedOriginCity)
+          : null,
+        destinationCity: mergedDestinationCity
+          ? this.removeVietnameseAccents(mergedDestinationCity)
+          : null,
+        date: mergedDate,
         needMoreInfo: searchParams.needMoreInfo,
         clarificationMessage: searchParams.clarificationMessage,
       };
 
       // Find matching locations
       if (searchParams.originCity) {
-        const normalizedOrigin = this.removeVietnameseAccents(
-          searchParams.originCity.toLowerCase(),
-        );
+        const normalizedOrigin = searchParams.originCity.toLowerCase();
         const originLocations = (locations as Location[]).filter((l) => {
           const normalizedCity = this.removeVietnameseAccents(
             l.city.toLowerCase(),
@@ -276,9 +286,7 @@ CRITICAL: Return ONLY valid JSON. Use null (not "null" string) for missing value
       }
 
       if (searchParams.destinationCity) {
-        const normalizedDest = this.removeVietnameseAccents(
-          searchParams.destinationCity.toLowerCase(),
-        );
+        const normalizedDest = searchParams.destinationCity.toLowerCase();
         const destLocations = (locations as Location[]).filter((l) => {
           const normalizedCity = this.removeVietnameseAccents(
             l.city.toLowerCase(),
@@ -334,9 +342,14 @@ CRITICAL: Return ONLY valid JSON. Use null (not "null" string) for missing value
       }
 
       // Search for trips via Trip service
+      this.logger.log(
+        'Search params before calling searchTrips:',
+        searchParams,
+      );
       const trips = await this.searchTrips(searchParams);
+      this.logger.log(`Found ${trips?.length || 0} trips`);
 
-      if (trips.length === 0) {
+      if (!trips || trips.length === 0) {
         const noResultMessage =
           searchParams.originName && searchParams.destinationName
             ? `Không tìm thấy chuyến xe từ ${searchParams.originName} đến ${searchParams.destinationName}${searchParams.date ? ` vào ngày ${searchParams.date}` : ''}.`
@@ -350,11 +363,15 @@ CRITICAL: Return ONLY valid JSON. Use null (not "null" string) for missing value
       }
 
       // Generate friendly response
-      const routeInfo = trips[0]?.tripRoutes?.[0]?.route;
+      const firstTrip = trips[0];
       const fromLocation =
-        routeInfo?.origin?.name || searchParams.originName || 'điểm đi';
+        firstTrip?.originStop?.location?.city ||
+        firstTrip?.tripRoutes?.[0]?.route?.origin?.name ||
+        searchParams.originName ||
+        'điểm đi';
       const toLocation =
-        routeInfo?.destination?.name ||
+        firstTrip?.destinationStop?.location?.city ||
+        firstTrip?.tripRoutes?.[0]?.route?.destination?.name ||
         searchParams.destinationName ||
         'điểm đến';
 
@@ -379,7 +396,7 @@ CRITICAL: Return ONLY valid JSON. Use null (not "null" string) for missing value
         suggestions: ['Xem tất cả chuyến', 'Đặt vé ngay', 'Tìm chuyến khác'],
       };
     } catch (error) {
-      this.logger.error(`Error in trip search: ${error.message}`);
+      this.logger.error(`Error in trip search:`, error);
       return {
         message:
           'Tôi có thể giúp bạn tìm chuyến xe. Bạn muốn đi từ đâu đến đâu?',
@@ -394,29 +411,30 @@ CRITICAL: Return ONLY valid JSON. Use null (not "null" string) for missing value
   }
 
   private async searchTrips(params: SearchParams) {
-    const { originIds, destinationIds, date } = params;
+    const { originCity, destinationCity, date } = params;
 
-    let startDate = new Date();
-    if (date && date !== 'null') {
-      const parsedDate = new Date(date);
-      if (!isNaN(parsedDate.getTime())) {
-        startDate = parsedDate;
-      }
+    try {
+      // Call Trip service to search trips with city names
+      const response = await firstValueFrom(
+        this.tripClient.send(
+          { cmd: 'search_trips' },
+          {
+            originCity,
+            destinationCity,
+            departureDate: date,
+            includeStops: 'true',
+            includeRoutes: 'true',
+          },
+        ),
+        { defaultValue: null },
+      );
+
+      // Extract trips array from response
+      return response?.data || [];
+    } catch (error) {
+      this.logger.error(`Failed to call Trip service:`, error);
+      throw error;
     }
-
-    // Call Trip service to search trips
-    const trips = await firstValueFrom(
-      this.tripClient.send(
-        { cmd: 'search_trips' },
-        {
-          originIds,
-          destinationIds,
-          startDate: startDate.toISOString(),
-        },
-      ),
-    );
-
-    return trips;
   }
 
   private async handleBooking(
